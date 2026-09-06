@@ -227,6 +227,29 @@ describe('organizations routes', () => {
     expect(del.statusCode).toBe(204);
   });
 
+  it('rejects transferring ownership to yourself', async () => {
+    const owner = await makeAuthedUser(app, 'self-transfer-owner');
+    createdUserIds.push(owner.userId);
+
+    const create = await app.inject({
+      method: 'POST',
+      url: '/api/v1/organizations',
+      headers: { cookie: owner.cookie },
+      payload: { name: `Self Transfer Route Org ${crypto.randomUUID()}` },
+    });
+    const organizationId = create.json().id as string;
+
+    const transfer = await app.inject({
+      method: 'POST',
+      url: `/api/v1/organizations/${organizationId}/transfer-ownership`,
+      headers: { cookie: owner.cookie },
+      payload: { userId: owner.userId },
+    });
+    expect(transfer.statusCode).toBe(409);
+
+    await app.db.delete(schema.organizations).where(eq(schema.organizations.id, organizationId));
+  });
+
   it('rejects delete from a non-owner admin', async () => {
     const owner = await makeAuthedUser(app, 'delete-owner');
     createdUserIds.push(owner.userId);

@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, primaryKey, index } from 'drizzle-orm/pg-core';
 import type { Role } from '@devflow/types';
 import { organizations } from './organizations';
 import { users } from './users';
@@ -17,5 +17,9 @@ export const organizationMembers = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [primaryKey({ columns: [table.organizationId, table.userId] })],
+  (table) => [
+    primaryKey({ columns: [table.organizationId, table.userId] }),
+    // Supports "list all organizations for a user" (userId isn't the leading column of the composite PK).
+    index('organization_members_user_id_idx').on(table.userId),
+  ],
 );

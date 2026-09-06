@@ -33,5 +33,7 @@ export const outboxEvents = pgTable(
     index('outbox_events_relay_idx')
       .on(table.occurredAt)
       .where(sql`${table.relayedAt} is null`),
+    // Supports "list outbox events for an organization" (admin/debug queries).
+    index('outbox_events_organization_id_idx').on(table.organizationId),
   ],
 );

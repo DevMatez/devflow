@@ -15,6 +15,7 @@ import {
   listOrganizationsForUser,
   MemberNotFoundError,
   removeMember,
+  SelfTransferError,
   transferOwnership,
   updateOrganizationSettings,
 } from '../organizations.service';
@@ -213,6 +214,26 @@ describe('organizations service', () => {
     const members = await listMembers(app.db, ctx);
     expect(members.find((m) => m.userId === targetId)?.role).toBe('owner');
     expect(members.find((m) => m.userId === ownerId)?.role).toBe('admin');
+  });
+
+  it('rejects transferring ownership to yourself', async () => {
+    const ownerId = await makeUser('self-transfer-owner');
+    const org = await createOrganization(app.db, {
+      name: 'Self Transfer Org',
+      userId: ownerId,
+      correlationId: crypto.randomUUID(),
+    });
+    createdOrgIds.push(org.id as OrganizationId);
+    const organizationId = org.id as OrganizationId;
+    const ctx: OrgContext = { organizationId, userId: ownerId, role: 'owner' };
+
+    await expect(transferOwnership(app.db, ctx, ownerId, crypto.randomUUID())).rejects.toThrow(
+      SelfTransferError,
+    );
+
+    // Role must be unchanged — the rejected call must not have partially applied.
+    const members = await listMembers(app.db, ctx);
+    expect(members.find((m) => m.userId === ownerId)?.role).toBe('owner');
   });
 
   it('deletes an organization', async () => {

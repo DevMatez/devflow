@@ -34,6 +34,10 @@ export function createSlackClient(options: SlackClientOptions) {
       body: JSON.stringify(body),
     });
 
+    // Slack's Web API returns 200 with {ok:false} for most errors, but a gateway/rate-limit
+    // proxy in front of it can still return a non-2xx, non-JSON body.
+    if (!res.ok) throw new SlackApiError(`http_${res.status}`);
+
     const data = (await res.json()) as T;
     if (!data.ok) throw new SlackApiError(data.error ?? 'unknown_error');
     return data;
