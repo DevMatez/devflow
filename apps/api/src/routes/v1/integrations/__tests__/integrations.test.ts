@@ -378,4 +378,160 @@ describe('integrations routes', () => {
       expect(res.statusCode).toBe(400);
     });
   });
+
+  describe('Slack connect flow', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('redirects to the Slack OAuth authorize URL and sets a state cookie', async () => {
+      const owner = await makeAuthedUser(app, 'slack-authorize');
+      createdUserIds.push(owner.userId);
+      const organizationId = await makeOrg(owner, 'slack-authorize');
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations/slack/authorize`,
+        headers: { cookie: owner.cookie },
+      });
+
+      expect(res.statusCode).toBe(302);
+      const location = new URL(res.headers.location as string);
+      expect(location.origin + location.pathname).toBe('https://slack.com/oauth/v2/authorize');
+      expect(location.searchParams.get('scope')).toBe('chat:write,channels:read,groups:read');
+      expect(location.searchParams.get('state')).toBeTruthy();
+      expect(() =>
+        extractCookie(res.headers['set-cookie'], 'devflow_integration_oauth_state'),
+      ).not.toThrow();
+    });
+
+    it('rejects a non-admin starting an authorize', async () => {
+      const owner = await makeAuthedUser(app, 'slack-authorize-authz-owner');
+      createdUserIds.push(owner.userId);
+      const organizationId = await makeOrg(owner, 'slack-authorize-authz');
+      const outsider = await makeAuthedUser(app, 'slack-authorize-authz-outsider');
+      createdUserIds.push(outsider.userId);
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations/slack/authorize`,
+        headers: { cookie: outsider.cookie },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('completes the connect flow end-to-end and stores the bot token connection', async () => {
+      const owner = await makeAuthedUser(app, 'slack-callback');
+      createdUserIds.push(owner.userId);
+      const organizationId = await makeOrg(owner, 'slack-callback');
+
+      const authorize = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations/slack/authorize`,
+        headers: { cookie: owner.cookie },
+      });
+      const state = new URL(authorize.headers.location as string).searchParams.get('state')!;
+      const stateCookie = extractCookie(
+        authorize.headers['set-cookie'],
+        'devflow_integration_oauth_state',
+      );
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          jsonResponse({
+            ok: true,
+            access_token: 'xoxb-1-2-3',
+            bot_user_id: 'U0KRQLJ9H',
+            team: { id: 'T9TK3CUKW', name: 'Acme' },
+          }),
+        ),
+      );
+
+      const callback = await app.inject({
+        method: 'GET',
+        url: `/api/v1/integrations/slack/callback?code=a-code&state=${state}`,
+        headers: { cookie: `${owner.cookie}; ${stateCookie}` },
+      });
+
+      expect(callback.statusCode).toBe(302);
+      expect(callback.headers.location).toContain('connected=slack');
+
+      const list = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations`,
+        headers: { cookie: owner.cookie },
+      });
+      const connections = list.json().connections;
+      expect(connections).toHaveLength(1);
+      expect(connections[0].provider).toBe('slack');
+      expect(connections[0].externalAccount).toEqual({
+        teamId: 'T9TK3CUKW',
+        teamName: 'Acme',
+        botUserId: 'U0KRQLJ9H',
+      });
+    });
+
+    it('rejects a callback with a tampered/invalid state', async () => {
+      const owner = await makeAuthedUser(app, 'slack-callback-bad-state');
+      createdUserIds.push(owner.userId);
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/integrations/slack/callback?code=a-code&state=not-a-real-state',
+        headers: { cookie: owner.cookie },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('rejects a callback missing code', async () => {
+      const owner = await makeAuthedUser(app, 'slack-callback-missing-code');
+      createdUserIds.push(owner.userId);
+      const organizationId = await makeOrg(owner, 'slack-callback-missing-code');
+
+      const authorize = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations/slack/authorize`,
+        headers: { cookie: owner.cookie },
+      });
+      const state = new URL(authorize.headers.location as string).searchParams.get('state')!;
+      const stateCookie = extractCookie(
+        authorize.headers['set-cookie'],
+        'devflow_integration_oauth_state',
+      );
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/integrations/slack/callback?error=access_denied&state=${state}`,
+        headers: { cookie: `${owner.cookie}; ${stateCookie}` },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('rejects a callback from a user without admin access to the target organization', async () => {
+      const owner = await makeAuthedUser(app, 'slack-callback-authz-owner');
+      createdUserIds.push(owner.userId);
+      const organizationId = await makeOrg(owner, 'slack-callback-authz');
+      const outsider = await makeAuthedUser(app, 'slack-callback-authz-outsider');
+      createdUserIds.push(outsider.userId);
+
+      const authorize = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations/slack/authorize`,
+        headers: { cookie: owner.cookie },
+      });
+      const state = new URL(authorize.headers.location as string).searchParams.get('state')!;
+      const stateCookie = extractCookie(
+        authorize.headers['set-cookie'],
+        'devflow_integration_oauth_state',
+      );
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/integrations/slack/callback?code=a-code&state=${state}`,
+        headers: { cookie: `${outsider.cookie}; ${stateCookie}` },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+  });
 });

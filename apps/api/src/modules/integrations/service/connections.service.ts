@@ -7,6 +7,7 @@ import {
   findConnection,
   findConnectionByInstallationId as findConnectionByInstallationIdRow,
   findConnectionByWorkspaceId as findConnectionByWorkspaceIdRow,
+  findConnectionByTeamId as findConnectionByTeamIdRow,
   updateConnectionHealth as updateConnectionHealthRow,
   updateConnectionCredentials as updateConnectionCredentialsRow,
   revokeConnection as revokeConnectionRow,
@@ -49,6 +50,14 @@ export function getConnectionByWorkspaceId(
   workspaceId: string,
 ): Promise<ConnectionRow | undefined> {
   return findConnectionByWorkspaceIdRow(db, workspaceId);
+}
+
+/** Same purpose as `getConnectionByInstallationId`, keyed by Slack's team_id instead. */
+export function getConnectionByTeamId(
+  db: Database,
+  teamId: string,
+): Promise<ConnectionRow | undefined> {
+  return findConnectionByTeamIdRow(db, teamId);
 }
 
 export interface ConnectInput {

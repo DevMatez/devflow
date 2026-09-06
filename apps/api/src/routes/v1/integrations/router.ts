@@ -19,18 +19,36 @@ import {
   decodeGithubAppPrivateKey,
 } from '../../../modules/integrations/service/github-connect.service';
 import { connectPlaneWorkspace } from '../../../modules/integrations/service/plane-connect.service';
+import { completeSlackInstall } from '../../../modules/integrations/service/slack-connect.service';
 import { parseCredentialsKey } from '@devflow/integrations-core';
 import { PlaneApiError } from '@devflow/integrations-plane';
+import {
+  buildSlackAuthorizeUrl,
+  SlackOAuthError,
+  type SlackOAuthConfig,
+} from '@devflow/integrations-slack';
 import {
   integrationCategoryParamsSchema,
   connectionResponseSchema,
   connectionsListResponseSchema,
   githubInstallCallbackQuerySchema,
   planeConnectBodySchema,
+  slackOAuthCallbackQuerySchema,
 } from './schema';
 import { organizationParamsSchema } from '../organizations/schema';
 
 const OAUTH_STATE_TTL_MS = () => env.OAUTH_STATE_TTL_MINUTES * 60_000;
+
+const SLACK_BOT_SCOPES = 'chat:write,channels:read,groups:read';
+
+function slackConfig(): SlackOAuthConfig {
+  return {
+    clientId: env.SLACK_CLIENT_ID,
+    clientSecret: env.SLACK_CLIENT_SECRET,
+    redirectUri: env.SLACK_OAUTH_CALLBACK_URL,
+    scopes: SLACK_BOT_SCOPES,
+  };
+}
 
 /** Never spreads the row — `encryptedCredentials`/`credentialsIv` must never leave the service layer. */
 function toConnectionResponse(row: ConnectionRow) {
@@ -209,6 +227,86 @@ export async function integrationsRouter(app: FastifyInstance): Promise<void> {
         }
         throw error;
       }
+    },
+  );
+
+  typed.get(
+    '/organizations/:organizationId/integrations/slack/authorize',
+    {
+      preHandler: requireOrgRole('admin'),
+      schema: {
+        tags: ['Integrations'],
+        summary: 'Start a Slack OAuth install',
+        description:
+          "Sets a short-lived signed state cookie and redirects to Slack's OAuth v2 authorize URL (design doc §7).",
+        params: organizationParamsSchema,
+      },
+    },
+    async (request, reply) => {
+      if (!request.orgContext) return reply.forbidden();
+
+      const state = createOAuthState(env.SESSION_COOKIE_SECRET, OAUTH_STATE_TTL_MS(), {
+        organizationId: request.orgContext.organizationId,
+        provider: 'slack',
+      });
+      setIntegrationOAuthStateCookie(reply, state);
+
+      return reply.redirect(buildSlackAuthorizeUrl(slackConfig(), state), 302);
+    },
+  );
+
+  // Fixed path, not org-scoped: the redirect_uri is a single value registered
+  // with Slack and must match exactly across both OAuth steps (same reasoning
+  // as GitHub's callback, design doc §12) — org context travels via state only.
+  typed.get(
+    '/integrations/slack/callback',
+    {
+      preHandler: requireAuth,
+      schema: {
+        tags: ['Integrations'],
+        summary: 'Complete a Slack OAuth install',
+        description:
+          'Verifies the signed state, re-verifies the caller is an org admin/owner, exchanges the ' +
+          'code for a bot token, and stores the connection.',
+        querystring: slackOAuthCallbackQuerySchema,
+      },
+    },
+    async (request, reply) => {
+      if (!request.user) return reply.unauthorized();
+      const { code, state, error } = request.query;
+
+      if (error || !code) {
+        return reply.badRequest('Slack authorization was not completed');
+      }
+
+      const parsedState = verifyOAuthState(env.SESSION_COOKIE_SECRET, state);
+      const cookieState = consumeIntegrationOAuthStateCookie(request, reply);
+      if (!parsedState || parsedState.provider !== 'slack' || cookieState !== state) {
+        return reply.badRequest('Invalid or expired OAuth state');
+      }
+
+      const ctx = await resolveOrgContext(
+        app.db,
+        parsedState.organizationId,
+        request.user.id,
+        'admin',
+      );
+      if (!ctx) return reply.forbidden();
+
+      try {
+        await completeSlackInstall(
+          app.db,
+          ctx,
+          slackConfig(),
+          parseCredentialsKey(env.INTEGRATION_CREDENTIALS_KEY),
+          code,
+        );
+      } catch (thrown) {
+        if (thrown instanceof SlackOAuthError) return reply.badGateway(thrown.message);
+        throw thrown;
+      }
+
+      return reply.redirect(`${env.WEB_APP_URL}/settings/integrations?connected=slack`, 302);
     },
   );
 }

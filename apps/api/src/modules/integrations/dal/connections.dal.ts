@@ -68,6 +68,17 @@ export function findConnectionByWorkspaceId(db: Database, workspaceId: string) {
   });
 }
 
+/** Same purpose as `findConnectionByInstallationId`, keyed by Slack's team_id instead. */
+export function findConnectionByTeamId(db: Database, teamId: string) {
+  return db.query.integrationConnections.findFirst({
+    where: and(
+      eq(schema.integrationConnections.category, 'chat'),
+      eq(schema.integrationConnections.provider, 'slack'),
+      sql`${schema.integrationConnections.externalAccount}->>'teamId' = ${teamId}`,
+    ),
+  });
+}
+
 export interface UpdateConnectionHealthInput {
   status?: ConnectionStatus;
   lastSyncedAt?: Date;

@@ -28,6 +28,7 @@ describe('webhooks route', () => {
 
   afterEach(async () => {
     delete webhookHandlers.github;
+    delete webhookHandlers.slack;
     for (const id of createdRowIds.splice(0)) {
       await app.db.delete(schema.webhookEvents).where(eq(schema.webhookEvents.id, id));
     }
@@ -49,10 +50,28 @@ describe('webhooks route', () => {
   it('returns 404 for a known provider with no registered handler', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/api/v1/webhooks/slack',
+      url: '/api/v1/webhooks/calendar',
       payload: { hello: 'world' },
     });
     expect(res.statusCode).toBe(404);
+  });
+
+  it('responds to the Slack url_verification handshake without touching dedupe/persistence', async () => {
+    webhookHandlers.slack = makeHandler({
+      extractDeliveryId: () => {
+        throw new Error('should not be called for a url_verification payload');
+      },
+    });
+    const challenge = 'test-challenge-value';
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/webhooks/slack',
+      payload: { type: 'url_verification', challenge },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ challenge });
   });
 
   it('returns 401 when signature verification fails', async () => {

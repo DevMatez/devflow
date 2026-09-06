@@ -25,7 +25,11 @@
         "GITHUB_APP_ID",
         "GITHUB_APP_PRIVATE_KEY_BASE64",
         "GITHUB_APP_WEBHOOK_SECRET",
-        "GITHUB_APP_SLUG"
+        "GITHUB_APP_SLUG",
+        "SLACK_CLIENT_ID",
+        "SLACK_CLIENT_SECRET",
+        "SLACK_SIGNING_SECRET",
+        "SLACK_OAUTH_CALLBACK_URL"
       ]
     },
     "lint": {
@@ -51,7 +55,11 @@
         "GITHUB_APP_ID",
         "GITHUB_APP_PRIVATE_KEY_BASE64",
         "GITHUB_APP_WEBHOOK_SECRET",
-        "GITHUB_APP_SLUG"
+        "GITHUB_APP_SLUG",
+        "SLACK_CLIENT_ID",
+        "SLACK_CLIENT_SECRET",
+        "SLACK_SIGNING_SECRET",
+        "SLACK_OAUTH_CALLBACK_URL"
       ]
     },
     "clean": {

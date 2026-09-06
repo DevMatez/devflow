@@ -5,6 +5,7 @@ const DEFAULT_PORT = 4000;
 const DEFAULT_HOST = 'localhost';
 const DEFAULT_HOMEPAGE_URL = `http://localhost:3000`;
 const DEFAULT_CALLBACK_URL = `${DEFAULT_HOMEPAGE_URL}/api/v1/auth/github/callback`;
+const DEFAULT_SLACK_CALLBACK_URL = `${DEFAULT_HOMEPAGE_URL}/api/v1/integrations/slack/callback`;
 
 const envSchema = z.object({
   NODE_ENV: sharedEnv.nodeEnv(),
@@ -29,6 +30,11 @@ const envSchema = z.object({
   GITHUB_APP_PRIVATE_KEY_BASE64: sharedEnv.requiredString(),
   GITHUB_APP_WEBHOOK_SECRET: sharedEnv.requiredString(),
   GITHUB_APP_SLUG: sharedEnv.requiredString(),
+  // Wave 2 Chat Slack app — OAuth v2, App-wide signing secret (unlike Plane's per-connection one).
+  SLACK_CLIENT_ID: sharedEnv.requiredString(),
+  SLACK_CLIENT_SECRET: sharedEnv.requiredString(),
+  SLACK_SIGNING_SECRET: sharedEnv.requiredString(),
+  SLACK_OAUTH_CALLBACK_URL: sharedEnv.url().default(DEFAULT_SLACK_CALLBACK_URL),
 });
 
 export type Env = z.infer<typeof envSchema>;

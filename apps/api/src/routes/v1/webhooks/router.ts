@@ -60,6 +60,14 @@ export async function webhooksRouter(app: FastifyInstance): Promise<void> {
         return reply.unauthorized();
       }
 
+      // Slack's Events API one-time handshake when a request URL is first configured — must
+      // echo the challenge synchronously, before dedupe/persistence even begins (no dedupe key
+      // or connection to resolve for this payload shape).
+      const body = request.body as { type?: string; challenge?: string } | undefined;
+      if (provider === 'slack' && body?.type === 'url_verification' && body.challenge) {
+        return reply.code(200).send({ challenge: body.challenge });
+      }
+
       const deliveryId = handler.extractDeliveryId(rawRequest);
       const eventTypeHeader = request.headers[getEventTypeHeader(provider)];
       const eventType = Array.isArray(eventTypeHeader)

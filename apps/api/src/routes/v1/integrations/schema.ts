@@ -35,3 +35,9 @@ export const planeConnectBodySchema = z.object({
   apiToken: z.string().min(1),
   webhookSecret: z.string().min(1),
 });
+
+export const slackOAuthCallbackQuerySchema = z.object({
+  code: z.string().optional(),
+  state: z.string(),
+  error: z.string().optional(),
+});
