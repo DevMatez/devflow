@@ -534,4 +534,165 @@ describe('integrations routes', () => {
       expect(res.statusCode).toBe(403);
     });
   });
+
+  describe('Calendar connect flow', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    function makeInstallFetch() {
+      return vi
+        .fn()
+        .mockImplementationOnce(async () =>
+          jsonResponse({ access_token: 'at-1', refresh_token: 'rt-1' }),
+        )
+        .mockImplementationOnce(async () => jsonResponse({ email: '[email protected]' }))
+        .mockImplementationOnce(async () =>
+          jsonResponse({ id: 'channel-1', resourceId: 'resource-1', expiration: '1426325213000' }),
+        );
+    }
+
+    it('redirects to the Google OAuth authorize URL and sets a state cookie', async () => {
+      const owner = await makeAuthedUser(app, 'calendar-authorize');
+      createdUserIds.push(owner.userId);
+      const organizationId = await makeOrg(owner, 'calendar-authorize');
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations/calendar/authorize`,
+        headers: { cookie: owner.cookie },
+      });
+
+      expect(res.statusCode).toBe(302);
+      const location = new URL(res.headers.location as string);
+      expect(location.origin + location.pathname).toBe(
+        'https://accounts.google.com/o/oauth2/v2/auth',
+      );
+      expect(location.searchParams.get('access_type')).toBe('offline');
+      expect(location.searchParams.get('state')).toBeTruthy();
+      expect(() =>
+        extractCookie(res.headers['set-cookie'], 'devflow_integration_oauth_state'),
+      ).not.toThrow();
+    });
+
+    it('rejects a non-admin starting an authorize', async () => {
+      const owner = await makeAuthedUser(app, 'calendar-authorize-authz-owner');
+      createdUserIds.push(owner.userId);
+      const organizationId = await makeOrg(owner, 'calendar-authorize-authz');
+      const outsider = await makeAuthedUser(app, 'calendar-authorize-authz-outsider');
+      createdUserIds.push(outsider.userId);
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations/calendar/authorize`,
+        headers: { cookie: outsider.cookie },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('completes the connect flow end-to-end, registers a watch channel, and stores the connection', async () => {
+      const owner = await makeAuthedUser(app, 'calendar-callback');
+      createdUserIds.push(owner.userId);
+      const organizationId = await makeOrg(owner, 'calendar-callback');
+
+      const authorize = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations/calendar/authorize`,
+        headers: { cookie: owner.cookie },
+      });
+      const state = new URL(authorize.headers.location as string).searchParams.get('state')!;
+      const stateCookie = extractCookie(
+        authorize.headers['set-cookie'],
+        'devflow_integration_oauth_state',
+      );
+
+      vi.stubGlobal('fetch', makeInstallFetch());
+
+      const callback = await app.inject({
+        method: 'GET',
+        url: `/api/v1/integrations/calendar/callback?code=a-code&state=${state}`,
+        headers: { cookie: `${owner.cookie}; ${stateCookie}` },
+      });
+
+      expect(callback.statusCode).toBe(302);
+      expect(callback.headers.location).toContain('connected=calendar');
+
+      const list = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations`,
+        headers: { cookie: owner.cookie },
+      });
+      const connections = list.json().connections;
+      expect(connections).toHaveLength(1);
+      expect(connections[0].provider).toBe('google');
+      expect(connections[0].externalAccount).toMatchObject({
+        email: '[email protected]',
+        calendarId: 'primary',
+        channelId: 'channel-1',
+        resourceId: 'resource-1',
+      });
+    });
+
+    it('rejects a callback with a tampered/invalid state', async () => {
+      const owner = await makeAuthedUser(app, 'calendar-callback-bad-state');
+      createdUserIds.push(owner.userId);
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/integrations/calendar/callback?code=a-code&state=not-a-real-state',
+        headers: { cookie: owner.cookie },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('rejects a callback missing code', async () => {
+      const owner = await makeAuthedUser(app, 'calendar-callback-missing-code');
+      createdUserIds.push(owner.userId);
+      const organizationId = await makeOrg(owner, 'calendar-callback-missing-code');
+
+      const authorize = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations/calendar/authorize`,
+        headers: { cookie: owner.cookie },
+      });
+      const state = new URL(authorize.headers.location as string).searchParams.get('state')!;
+      const stateCookie = extractCookie(
+        authorize.headers['set-cookie'],
+        'devflow_integration_oauth_state',
+      );
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/integrations/calendar/callback?error=access_denied&state=${state}`,
+        headers: { cookie: `${owner.cookie}; ${stateCookie}` },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('rejects a callback from a user without admin access to the target organization', async () => {
+      const owner = await makeAuthedUser(app, 'calendar-callback-authz-owner');
+      createdUserIds.push(owner.userId);
+      const organizationId = await makeOrg(owner, 'calendar-callback-authz');
+      const outsider = await makeAuthedUser(app, 'calendar-callback-authz-outsider');
+      createdUserIds.push(outsider.userId);
+
+      const authorize = await app.inject({
+        method: 'GET',
+        url: `/api/v1/organizations/${organizationId}/integrations/calendar/authorize`,
+        headers: { cookie: owner.cookie },
+      });
+      const state = new URL(authorize.headers.location as string).searchParams.get('state')!;
+      const stateCookie = extractCookie(
+        authorize.headers['set-cookie'],
+        'devflow_integration_oauth_state',
+      );
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/integrations/calendar/callback?code=a-code&state=${state}`,
+        headers: { cookie: `${outsider.cookie}; ${stateCookie}` },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+  });
 });

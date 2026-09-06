@@ -20,6 +20,7 @@ import {
 } from '../../../modules/integrations/service/github-connect.service';
 import { connectPlaneWorkspace } from '../../../modules/integrations/service/plane-connect.service';
 import { completeSlackInstall } from '../../../modules/integrations/service/slack-connect.service';
+import { completeGoogleCalendarInstall } from '../../../modules/integrations/service/calendar-connect.service';
 import { parseCredentialsKey } from '@devflow/integrations-core';
 import { PlaneApiError } from '@devflow/integrations-plane';
 import {
@@ -28,12 +29,18 @@ import {
   type SlackOAuthConfig,
 } from '@devflow/integrations-slack';
 import {
+  buildGoogleAuthorizeUrl,
+  GoogleOAuthError,
+  type GoogleOAuthConfig,
+} from '@devflow/integrations-calendar';
+import {
   integrationCategoryParamsSchema,
   connectionResponseSchema,
   connectionsListResponseSchema,
   githubInstallCallbackQuerySchema,
   planeConnectBodySchema,
   slackOAuthCallbackQuerySchema,
+  googleOAuthCallbackQuerySchema,
 } from './schema';
 import { organizationParamsSchema } from '../organizations/schema';
 
@@ -47,6 +54,19 @@ function slackConfig(): SlackOAuthConfig {
     clientSecret: env.SLACK_CLIENT_SECRET,
     redirectUri: env.SLACK_OAUTH_CALLBACK_URL,
     scopes: SLACK_BOT_SCOPES,
+  };
+}
+
+// email is for display only (design doc §8 specifies calendar.readonly + calendar.events).
+const GOOGLE_SCOPES =
+  'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events email';
+
+function googleConfig(): GoogleOAuthConfig {
+  return {
+    clientId: env.GOOGLE_CLIENT_ID,
+    clientSecret: env.GOOGLE_CLIENT_SECRET,
+    redirectUri: env.GOOGLE_OAUTH_CALLBACK_URL,
+    scopes: GOOGLE_SCOPES,
   };
 }
 
@@ -307,6 +327,86 @@ export async function integrationsRouter(app: FastifyInstance): Promise<void> {
       }
 
       return reply.redirect(`${env.WEB_APP_URL}/settings/integrations?connected=slack`, 302);
+    },
+  );
+
+  typed.get(
+    '/organizations/:organizationId/integrations/calendar/authorize',
+    {
+      preHandler: requireOrgRole('admin'),
+      schema: {
+        tags: ['Integrations'],
+        summary: 'Start a Google Calendar OAuth install',
+        description:
+          "Sets a short-lived signed state cookie and redirects to Google's OAuth authorize URL, " +
+          'requesting offline access so the connection keeps working without the user present (design doc §8).',
+        params: organizationParamsSchema,
+      },
+    },
+    async (request, reply) => {
+      if (!request.orgContext) return reply.forbidden();
+
+      const state = createOAuthState(env.SESSION_COOKIE_SECRET, OAUTH_STATE_TTL_MS(), {
+        organizationId: request.orgContext.organizationId,
+        provider: 'calendar',
+      });
+      setIntegrationOAuthStateCookie(reply, state);
+
+      return reply.redirect(buildGoogleAuthorizeUrl(googleConfig(), state), 302);
+    },
+  );
+
+  // Fixed path, not org-scoped — same reasoning as GitHub's/Slack's callback (design doc §12).
+  typed.get(
+    '/integrations/calendar/callback',
+    {
+      preHandler: requireAuth,
+      schema: {
+        tags: ['Integrations'],
+        summary: 'Complete a Google Calendar OAuth install',
+        description:
+          'Verifies the signed state, re-verifies the caller is an org admin/owner, exchanges the ' +
+          'code for tokens, registers the push-notification channel, and stores the connection.',
+        querystring: googleOAuthCallbackQuerySchema,
+      },
+    },
+    async (request, reply) => {
+      if (!request.user) return reply.unauthorized();
+      const { code, state, error } = request.query;
+
+      if (error || !code) {
+        return reply.badRequest('Google authorization was not completed');
+      }
+
+      const parsedState = verifyOAuthState(env.SESSION_COOKIE_SECRET, state);
+      const cookieState = consumeIntegrationOAuthStateCookie(request, reply);
+      if (!parsedState || parsedState.provider !== 'calendar' || cookieState !== state) {
+        return reply.badRequest('Invalid or expired OAuth state');
+      }
+
+      const ctx = await resolveOrgContext(
+        app.db,
+        parsedState.organizationId,
+        request.user.id,
+        'admin',
+      );
+      if (!ctx) return reply.forbidden();
+
+      try {
+        await completeGoogleCalendarInstall(
+          app.db,
+          ctx,
+          googleConfig(),
+          parseCredentialsKey(env.INTEGRATION_CREDENTIALS_KEY),
+          code,
+          env.GOOGLE_CALENDAR_WEBHOOK_URL,
+        );
+      } catch (thrown) {
+        if (thrown instanceof GoogleOAuthError) return reply.badGateway(thrown.message);
+        throw thrown;
+      }
+
+      return reply.redirect(`${env.WEB_APP_URL}/settings/integrations?connected=calendar`, 302);
     },
   );
 }

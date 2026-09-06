@@ -6,6 +6,8 @@ const DEFAULT_HOST = 'localhost';
 const DEFAULT_HOMEPAGE_URL = `http://localhost:3000`;
 const DEFAULT_CALLBACK_URL = `${DEFAULT_HOMEPAGE_URL}/api/v1/auth/github/callback`;
 const DEFAULT_SLACK_CALLBACK_URL = `${DEFAULT_HOMEPAGE_URL}/api/v1/integrations/slack/callback`;
+const DEFAULT_GOOGLE_CALLBACK_URL = `${DEFAULT_HOMEPAGE_URL}/api/v1/integrations/calendar/callback`;
+const DEFAULT_CALENDAR_WEBHOOK_URL = `${DEFAULT_HOMEPAGE_URL}/api/v1/webhooks/calendar`;
 
 const envSchema = z.object({
   NODE_ENV: sharedEnv.nodeEnv(),
@@ -35,6 +37,12 @@ const envSchema = z.object({
   SLACK_CLIENT_SECRET: sharedEnv.requiredString(),
   SLACK_SIGNING_SECRET: sharedEnv.requiredString(),
   SLACK_OAUTH_CALLBACK_URL: sharedEnv.url().default(DEFAULT_SLACK_CALLBACK_URL),
+  // Wave 2 Calendar Google OAuth app — offline access (refresh token) + channel-watch webhook (design doc §8).
+  GOOGLE_CLIENT_ID: sharedEnv.requiredString(),
+  GOOGLE_CLIENT_SECRET: sharedEnv.requiredString(),
+  GOOGLE_OAUTH_CALLBACK_URL: sharedEnv.url().default(DEFAULT_GOOGLE_CALLBACK_URL),
+  // Public HTTPS address Google calls with push notifications; passed to events.watch at connect time.
+  GOOGLE_CALENDAR_WEBHOOK_URL: sharedEnv.url().default(DEFAULT_CALENDAR_WEBHOOK_URL),
 });
 
 export type Env = z.infer<typeof envSchema>;

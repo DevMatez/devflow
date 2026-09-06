@@ -16,6 +16,10 @@ export const webhookHandlers: Record<string, WebhookHandler> = {};
 export const webhookEventTypeHeaders: Record<string, string> = {
   github: 'x-github-event',
   plane: 'x-plane-event',
+  // Calendar has no vendor "event type" of its own — the channel id is the
+  // routing key normalize() needs, so it's what's round-tripped through this
+  // mechanism instead (design doc §8).
+  calendar: 'x-goog-channel-id',
 };
 
 export function getEventTypeHeader(provider: string): string {

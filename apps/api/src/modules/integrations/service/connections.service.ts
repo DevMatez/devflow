@@ -8,6 +8,8 @@ import {
   findConnectionByInstallationId as findConnectionByInstallationIdRow,
   findConnectionByWorkspaceId as findConnectionByWorkspaceIdRow,
   findConnectionByTeamId as findConnectionByTeamIdRow,
+  findConnectionByChannelId as findConnectionByChannelIdRow,
+  updateConnectionExternalAccount as updateConnectionExternalAccountRow,
   updateConnectionHealth as updateConnectionHealthRow,
   updateConnectionCredentials as updateConnectionCredentialsRow,
   revokeConnection as revokeConnectionRow,
@@ -58,6 +60,24 @@ export function getConnectionByTeamId(
   teamId: string,
 ): Promise<ConnectionRow | undefined> {
   return findConnectionByTeamIdRow(db, teamId);
+}
+
+/** Same purpose as `getConnectionByInstallationId`, keyed by Google's push-notification channel id instead. */
+export function getConnectionByChannelId(
+  db: Database,
+  channelId: string,
+): Promise<ConnectionRow | undefined> {
+  return findConnectionByChannelIdRow(db, channelId);
+}
+
+/** Merges mutable, non-secret operational fields into external_account (e.g. Calendar's sync token). */
+export function updateConnectionExternalAccount(
+  db: Database | DatabaseTransaction,
+  organizationId: string,
+  category: IntegrationCategory,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  return updateConnectionExternalAccountRow(db, organizationId, category, patch);
 }
 
 export interface ConnectInput {

@@ -41,3 +41,9 @@ export const slackOAuthCallbackQuerySchema = z.object({
   state: z.string(),
   error: z.string().optional(),
 });
+
+export const googleOAuthCallbackQuerySchema = z.object({
+  code: z.string().optional(),
+  state: z.string(),
+  error: z.string().optional(),
+});
