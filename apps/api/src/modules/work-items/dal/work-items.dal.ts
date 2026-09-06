@@ -28,7 +28,11 @@ export async function createWorkItem(
 }
 
 /** Org-scoped lookup — a work item in another org is invisible (design §12). */
-export function findWorkItemById(db: Database, organizationId: string, workItemId: string) {
+export function findWorkItemById(
+  db: Database | DatabaseTransaction,
+  organizationId: string,
+  workItemId: string,
+) {
   return db.query.workItems.findFirst({
     where: and(
       eq(schema.workItems.organizationId, organizationId),
