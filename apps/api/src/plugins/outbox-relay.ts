@@ -4,6 +4,8 @@ import { relayOutboxOnce, type EventRoute } from '@devflow/events';
 import { runWithCorrelationId } from '@devflow/observability';
 import { createSystemPingJob } from '../modules/system/jobs/system-ping.job';
 import { createSystemPingRoute } from '../modules/system/routing';
+import { createActivityProjectorJob } from '../modules/activity/jobs/activity-projector.job';
+import { createActivityRoutes, IGNORED_EVENT_TYPES } from '../modules/activity/routing';
 
 const RELAY_INTERVAL_MS = 2_000;
 
@@ -14,15 +16,30 @@ const RELAY_INTERVAL_MS = 2_000;
  */
 export const outboxRelayPlugin = fp(async (app) => {
   const systemPingJob = createSystemPingJob(app.log);
-  const routes: EventRoute[] = [createSystemPingRoute(systemPingJob)];
+  const activityProjectorJob = createActivityProjectorJob(app.db, app.log);
 
-  const worker = systemPingJob.createWorker(app.redis, {
-    runInContext: (correlationId, fn) => runWithCorrelationId(correlationId, fn),
-  });
+  const routes: EventRoute[] = [
+    createSystemPingRoute(systemPingJob),
+    ...createActivityRoutes(activityProjectorJob),
+  ];
+
+  const workers = [
+    systemPingJob.createWorker(app.redis, {
+      runInContext: (correlationId, fn) => runWithCorrelationId(correlationId, fn),
+    }),
+    activityProjectorJob.createWorker(app.redis, {
+      runInContext: (correlationId, fn) => runWithCorrelationId(correlationId, fn),
+    }),
+  ];
 
   const relayId = `api-${randomUUID()}`;
   const timer = setInterval(() => {
-    relayOutboxOnce({ db: app.db, routes, relayId }).catch((error: unknown) => {
+    relayOutboxOnce({
+      db: app.db,
+      routes,
+      relayId,
+      ignoredEventTypes: IGNORED_EVENT_TYPES,
+    }).catch((error: unknown) => {
       app.log.error({ err: error }, 'outbox relay cycle failed');
     });
   }, RELAY_INTERVAL_MS);
@@ -30,6 +47,6 @@ export const outboxRelayPlugin = fp(async (app) => {
 
   app.addHook('onClose', async () => {
     clearInterval(timer);
-    await worker.close();
+    await Promise.all(workers.map((worker) => worker.close()));
   });
 });
