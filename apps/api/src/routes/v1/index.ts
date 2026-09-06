@@ -7,6 +7,7 @@ import { invitationsRouter } from './invitations/router';
 import { integrationsRouter } from './integrations/router';
 import { webhooksRouter } from './webhooks/router';
 import { workItemsRouter } from './work-items/router';
+import { activityRouter } from './activity/router';
 
 /**
  * Registers all v1 routers. The parent mounts this under /api/v1
@@ -21,4 +22,5 @@ export async function v1Routes(app: FastifyInstance): Promise<void> {
   await app.register(integrationsRouter);
   await app.register(webhooksRouter);
   await app.register(workItemsRouter);
+  await app.register(activityRouter);
 }

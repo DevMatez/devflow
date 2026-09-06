@@ -13,11 +13,19 @@ export interface RelayOptions {
   leaseMs?: number;
   /** Rows at/above this attempt count are left unclaimed (dead-lettered) instead of retried forever. */
   maxAttempts?: number;
+  /**
+   * Event types intentionally not consumed yet. They are marked relayed
+   * (acknowledged) without enqueuing — a distinct outcome from "unknown type"
+   * (no route → dead-lettered as a defect signal). See Wave 3 design §5.
+   */
+  ignoredEventTypes?: Iterable<string>;
 }
 
 export interface RelayResult {
   claimed: number;
   relayed: number;
+  /** Rows acknowledged via `ignoredEventTypes` without enqueuing. */
+  ignored: number;
 }
 
 const DEFAULT_BATCH_SIZE = 20;
@@ -49,7 +57,14 @@ export async function relayOutboxOnce(options: RelayOptions): Promise<RelayResul
   const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
   const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
-  const routesByType = new Map(options.routes.map((route) => [route.eventType, route]));
+  // One event type may fan out to several routes (e.g. activity + notifications, §5).
+  const routesByType = new Map<string, EventRoute[]>();
+  for (const route of options.routes) {
+    const list = routesByType.get(route.eventType);
+    if (list) list.push(route);
+    else routesByType.set(route.eventType, [route]);
+  }
+  const ignoredTypes = new Set(options.ignoredEventTypes ?? []);
 
   // Step 1: claim a batch. Short transaction, no external calls.
   const claimExpiresAt = new Date(Date.now() + leaseMs);
@@ -84,11 +99,22 @@ export async function relayOutboxOnce(options: RelayOptions): Promise<RelayResul
 
   // Step 2 + 3: publish outside the transaction, then mark relayed (or record failure).
   let relayed = 0;
+  let ignored = 0;
 
   for (const row of claimed) {
-    const route = routesByType.get(row.type);
+    // Intentionally-unsupported type: acknowledge without enqueuing, don't dead-letter.
+    if (ignoredTypes.has(row.type)) {
+      await options.db
+        .update(schema.outboxEvents)
+        .set({ relayedAt: new Date() })
+        .where(eq(schema.outboxEvents.id, row.id));
+      ignored += 1;
+      continue;
+    }
 
-    if (!route) {
+    const routes = routesByType.get(row.type) ?? [];
+
+    if (routes.length === 0) {
       await options.db
         .update(schema.outboxEvents)
         .set({
@@ -100,7 +126,12 @@ export async function relayOutboxOnce(options: RelayOptions): Promise<RelayResul
     }
 
     try {
-      await route.enqueue(toDomainEvent(row));
+      const event = toDomainEvent(row);
+      // Each route has its own deterministic jobId(name, event.id), so a retried
+      // fan-out (one route succeeded, another threw) dedupes per route on BullMQ.
+      for (const route of routes) {
+        await route.enqueue(event);
+      }
       await options.db
         .update(schema.outboxEvents)
         .set({ relayedAt: new Date() })
@@ -117,5 +148,5 @@ export async function relayOutboxOnce(options: RelayOptions): Promise<RelayResul
     }
   }
 
-  return { claimed: claimed.length, relayed };
+  return { claimed: claimed.length, relayed, ignored };
 }
