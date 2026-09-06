@@ -4,6 +4,8 @@ import type { BranchRefStatus, PrRefState } from './enums';
 export interface BranchRef {
   repo: string;
   name: string;
+  /** The branch this was cut from / the PR merges into (saga input, §4.3, §4.4). */
+  base?: string;
   url?: string;
   status: BranchRefStatus;
 }

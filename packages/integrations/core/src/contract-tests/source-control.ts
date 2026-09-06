@@ -50,6 +50,20 @@ export function runSourceControlPortContractTests(
       });
     });
 
+    it('findOrCreateBranch returns a normalized Branch', async () => {
+      const branch = await fixtures.createPort().findOrCreateBranch(fixtures.ctx, {
+        repo: fixtures.repo,
+        name: fixtures.branchName,
+        fromRef: fixtures.fromRef,
+      });
+      expect(branch).toMatchObject({
+        name: expect.any(String),
+        repo: expect.any(String),
+        sha: expect.any(String),
+        url: expect.any(String),
+      });
+    });
+
     it('createPullRequest / getPullRequest return a normalized PullRequest', async () => {
       const port = fixtures.createPort();
       const pr = await port.createPullRequest(fixtures.ctx, {
@@ -77,6 +91,20 @@ export function runSourceControlPortContractTests(
         number: fixtures.prNumber,
       });
       expect(fetched).toMatchObject({ externalId: expect.any(String), number: expect.any(Number) });
+    });
+
+    it('findOrCreatePullRequest returns a normalized PullRequest', async () => {
+      const pr = await fixtures.createPort().findOrCreatePullRequest(fixtures.ctx, {
+        repo: fixtures.repo,
+        title: 'Contract test PR',
+        headRef: fixtures.branchName,
+        baseRef: fixtures.fromRef,
+      });
+      expect(pr).toMatchObject({
+        externalId: expect.any(String),
+        number: expect.any(Number),
+        state: expect.stringMatching(/^(open|closed|merged)$/),
+      });
     });
 
     it('createComment returns a normalized Comment', async () => {

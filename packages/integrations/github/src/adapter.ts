@@ -13,6 +13,7 @@ import type {
   Repository,
 } from '@devflow/integrations-core';
 import { toPullRequest, toComment, toCheckRun, toRepository, splitRepo } from './mappers';
+import type { GithubPullRequest } from './mappers';
 
 export interface GithubAdapterOptions {
   appId: string;
@@ -20,6 +21,13 @@ export interface GithubAdapterOptions {
   installationId: string;
   /** Injected for tests (matches the codebase's fetchImpl DI convention); defaults to global fetch. */
   fetch?: typeof globalThis.fetch;
+}
+
+/** GitHub REST errors carry a numeric `status`; 404 = absent, 422 = already exists (create race). */
+function githubErrorStatus(error: unknown): number | undefined {
+  return typeof error === 'object' && error !== null && 'status' in error
+    ? (error as { status?: number }).status
+    : undefined;
 }
 
 /** One instance per resolved connection (built by the registry's createAdapter callback) — already installation-scoped. */
@@ -34,45 +42,111 @@ export function createGithubSourceControlAdapter(options: GithubAdapterOptions):
     ...(options.fetch ? { request: { fetch: options.fetch } } : {}),
   });
 
+  async function getBranch(repo: string, name: string): Promise<Branch | null> {
+    const { owner, name: repoName } = splitRepo(repo);
+    try {
+      const { data: ref } = await octokit.git.getRef({
+        owner,
+        repo: repoName,
+        ref: `heads/${name}`,
+      });
+      return { name, repo, sha: ref.object.sha, url: `https://github.com/${repo}/tree/${name}` };
+    } catch (error) {
+      if (githubErrorStatus(error) === 404) return null;
+      throw error;
+    }
+  }
+
+  async function doCreateBranch(input: CreateBranchInput): Promise<Branch> {
+    const { owner, name: repoName } = splitRepo(input.repo);
+    const { data: ref } = await octokit.git.getRef({
+      owner,
+      repo: repoName,
+      ref: `heads/${input.fromRef}`,
+    });
+    const sha = ref.object.sha;
+    await octokit.git.createRef({ owner, repo: repoName, ref: `refs/heads/${input.name}`, sha });
+    return {
+      name: input.name,
+      repo: input.repo,
+      sha,
+      url: `https://github.com/${input.repo}/tree/${input.name}`,
+    };
+  }
+
+  async function findPullRequestByHead(
+    repo: string,
+    head: string,
+    base: string,
+  ): Promise<PullRequest | null> {
+    const { owner, name: repoName } = splitRepo(repo);
+    const { data } = await octokit.pulls.list({
+      owner,
+      repo: repoName,
+      head: `${owner}:${head}`,
+      base,
+      state: 'open',
+    });
+    const pr = data[0];
+    // pulls.list types `user` as nullable (deleted accounts); our PRs always have an author.
+    return pr ? toPullRequest(pr as unknown as GithubPullRequest, repo) : null;
+  }
+
+  async function doCreatePullRequest(input: CreatePullRequestInput): Promise<PullRequest> {
+    const { owner, name: repoName } = splitRepo(input.repo);
+    const { data } = await octokit.pulls.create({
+      owner,
+      repo: repoName,
+      title: input.title,
+      head: input.headRef,
+      base: input.baseRef,
+      body: input.body,
+    });
+    return toPullRequest(data, input.repo);
+  }
+
   return {
     async listRepositories(): Promise<Repository[]> {
       const { data } = await octokit.apps.listReposAccessibleToInstallation();
       return (data.repositories ?? []).map(toRepository);
     },
 
-    async createBranch(_ctx, input: CreateBranchInput): Promise<Branch> {
-      const { owner, name: repoName } = splitRepo(input.repo);
-      const { data: ref } = await octokit.git.getRef({
-        owner,
-        repo: repoName,
-        ref: `heads/${input.fromRef}`,
-      });
-      const sha = ref.object.sha;
-      await octokit.git.createRef({
-        owner,
-        repo: repoName,
-        ref: `refs/heads/${input.name}`,
-        sha,
-      });
-      return {
-        name: input.name,
-        repo: input.repo,
-        sha,
-        url: `https://github.com/${input.repo}/tree/${input.name}`,
-      };
+    createBranch(_ctx, input: CreateBranchInput): Promise<Branch> {
+      return doCreateBranch(input);
     },
 
-    async createPullRequest(_ctx, input: CreatePullRequestInput): Promise<PullRequest> {
-      const { owner, name: repoName } = splitRepo(input.repo);
-      const { data } = await octokit.pulls.create({
-        owner,
-        repo: repoName,
-        title: input.title,
-        head: input.headRef,
-        base: input.baseRef,
-        body: input.body,
-      });
-      return toPullRequest(data, input.repo);
+    // Check → create → on-422-refetch: converges on one branch under retries/races (design §4.3).
+    async findOrCreateBranch(_ctx, input: CreateBranchInput): Promise<Branch> {
+      const existing = await getBranch(input.repo, input.name);
+      if (existing) return existing;
+      try {
+        return await doCreateBranch(input);
+      } catch (error) {
+        if (githubErrorStatus(error) === 422) {
+          const branch = await getBranch(input.repo, input.name);
+          if (branch) return branch;
+        }
+        throw error;
+      }
+    },
+
+    createPullRequest(_ctx, input: CreatePullRequestInput): Promise<PullRequest> {
+      return doCreatePullRequest(input);
+    },
+
+    // Check → create → on-422-refetch, keyed by head→base (design §4.3).
+    async findOrCreatePullRequest(_ctx, input: CreatePullRequestInput): Promise<PullRequest> {
+      const existing = await findPullRequestByHead(input.repo, input.headRef, input.baseRef);
+      if (existing) return existing;
+      try {
+        return await doCreatePullRequest(input);
+      } catch (error) {
+        if (githubErrorStatus(error) === 422) {
+          const pr = await findPullRequestByHead(input.repo, input.headRef, input.baseRef);
+          if (pr) return pr;
+        }
+        throw error;
+      }
     },
 
     async getPullRequest(_ctx, input: { repo: string; number: number }): Promise<PullRequest> {
