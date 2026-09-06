@@ -9,3 +9,4 @@ export * from './projects';
 export * from './integration-connections';
 export * from './outbox-events';
 export * from './webhook-events';
+export * from './work-items';
