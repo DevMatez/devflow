@@ -33,6 +33,11 @@ env:
   SLACK_CLIENT_SECRET: ci-test-slack-client-secret
   SLACK_SIGNING_SECRET: ci-test-slack-signing-secret
   SLACK_OAUTH_CALLBACK_URL: http://localhost:4000/api/v1/integrations/slack/callback
+  # Not real secrets — CI never makes live Google calls (fetch is mocked in tests).
+  GOOGLE_CLIENT_ID: ci-test-google-client-id
+  GOOGLE_CLIENT_SECRET: ci-test-google-client-secret
+  GOOGLE_OAUTH_CALLBACK_URL: http://localhost:4000/api/v1/integrations/calendar/callback
+  GOOGLE_CALENDAR_WEBHOOK_URL: http://localhost:4000/api/v1/webhooks/calendar
 
 jobs:
   ci:

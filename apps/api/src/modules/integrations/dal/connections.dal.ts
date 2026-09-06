@@ -79,6 +79,38 @@ export function findConnectionByTeamId(db: Database, teamId: string) {
   });
 }
 
+/** Same purpose as `findConnectionByInstallationId`, keyed by Google's push-notification channel id instead. */
+export function findConnectionByChannelId(db: Database, channelId: string) {
+  return db.query.integrationConnections.findFirst({
+    where: and(
+      eq(schema.integrationConnections.category, 'calendar'),
+      eq(schema.integrationConnections.provider, 'google'),
+      sql`${schema.integrationConnections.externalAccount}->>'channelId' = ${channelId}`,
+    ),
+  });
+}
+
+/** Shallow-merges `patch` into the existing external_account jsonb — for mutable operational fields (e.g. Calendar's sync token) that aren't secrets. */
+export async function updateConnectionExternalAccount(
+  db: Database | DatabaseTransaction,
+  organizationId: string,
+  category: IntegrationCategory,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  await db
+    .update(schema.integrationConnections)
+    .set({
+      externalAccount: sql`${schema.integrationConnections.externalAccount} || ${JSON.stringify(patch)}::jsonb`,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(schema.integrationConnections.organizationId, organizationId),
+        eq(schema.integrationConnections.category, category),
+      ),
+    );
+}
+
 export interface UpdateConnectionHealthInput {
   status?: ConnectionStatus;
   lastSyncedAt?: Date;

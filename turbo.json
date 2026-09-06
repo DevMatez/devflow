@@ -29,7 +29,11 @@
         "SLACK_CLIENT_ID",
         "SLACK_CLIENT_SECRET",
         "SLACK_SIGNING_SECRET",
-        "SLACK_OAUTH_CALLBACK_URL"
+        "SLACK_OAUTH_CALLBACK_URL",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_OAUTH_CALLBACK_URL",
+        "GOOGLE_CALENDAR_WEBHOOK_URL"
       ]
     },
     "lint": {
@@ -59,7 +63,11 @@
         "SLACK_CLIENT_ID",
         "SLACK_CLIENT_SECRET",
         "SLACK_SIGNING_SECRET",
-        "SLACK_OAUTH_CALLBACK_URL"
+        "SLACK_OAUTH_CALLBACK_URL",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_OAUTH_CALLBACK_URL",
+        "GOOGLE_CALENDAR_WEBHOOK_URL"
       ]
     },
     "clean": {

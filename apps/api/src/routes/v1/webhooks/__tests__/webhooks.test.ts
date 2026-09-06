@@ -48,12 +48,18 @@ describe('webhooks route', () => {
   });
 
   it('returns 404 for a known provider with no registered handler', async () => {
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/v1/webhooks/calendar',
-      payload: { hello: 'world' },
-    });
-    expect(res.statusCode).toBe(404);
+    const original = webhookHandlers.calendar;
+    delete webhookHandlers.calendar;
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/webhooks/calendar',
+        payload: { hello: 'world' },
+      });
+      expect(res.statusCode).toBe(404);
+    } finally {
+      if (original) webhookHandlers.calendar = original;
+    }
   });
 
   it('responds to the Slack url_verification handshake without touching dedupe/persistence', async () => {
