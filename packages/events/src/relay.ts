@@ -11,6 +11,8 @@ export interface RelayOptions {
   batchSize?: number;
   /** How long a claim is held before another relay instance may reclaim it. */
   leaseMs?: number;
+  /** Rows at/above this attempt count are left unclaimed (dead-lettered) instead of retried forever. */
+  maxAttempts?: number;
 }
 
 export interface RelayResult {
@@ -20,6 +22,7 @@ export interface RelayResult {
 
 const DEFAULT_BATCH_SIZE = 20;
 const DEFAULT_LEASE_MS = 60_000;
+const DEFAULT_MAX_ATTEMPTS = 5;
 
 function toDomainEvent(row: typeof schema.outboxEvents.$inferSelect): DomainEvent {
   return {
@@ -45,6 +48,7 @@ function toDomainEvent(row: typeof schema.outboxEvents.$inferSelect): DomainEven
 export async function relayOutboxOnce(options: RelayOptions): Promise<RelayResult> {
   const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
   const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
+  const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   const routesByType = new Map(options.routes.map((route) => [route.eventType, route]));
 
   // Step 1: claim a batch. Short transaction, no external calls.
@@ -60,6 +64,8 @@ export async function relayOutboxOnce(options: RelayOptions): Promise<RelayResul
             isNull(schema.outboxEvents.claimExpiresAt),
             lt(schema.outboxEvents.claimExpiresAt, new Date()),
           ),
+          // Rows that have exhausted their attempts are dead-lettered in place, not reclaimed forever.
+          lt(schema.outboxEvents.attempts, maxAttempts),
         ),
       )
       .limit(batchSize)
@@ -103,7 +109,10 @@ export async function relayOutboxOnce(options: RelayOptions): Promise<RelayResul
     } catch (error) {
       await options.db
         .update(schema.outboxEvents)
-        .set({ attempts: row.attempts + 1, lastError: (error as Error).message })
+        .set({
+          attempts: row.attempts + 1,
+          lastError: error instanceof Error ? error.message : String(error),
+        })
         .where(eq(schema.outboxEvents.id, row.id));
     }
   }

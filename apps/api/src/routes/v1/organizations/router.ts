@@ -15,6 +15,7 @@ import {
   deleteOrganization,
   MemberNotFoundError,
   LastOwnerError,
+  SelfTransferError,
 } from '../../../modules/organizations/service/organizations.service';
 import {
   inviteMember,
@@ -303,6 +304,7 @@ export async function organizationsRouter(app: FastifyInstance): Promise<void> {
         );
       } catch (error) {
         if (error instanceof MemberNotFoundError) return reply.notFound(error.message);
+        if (error instanceof SelfTransferError) return reply.conflict(error.message);
         throw error;
       }
 

@@ -16,9 +16,10 @@ export const invitations = pgTable(
     role: text('role').$type<Role>().notNull(),
     tokenHash: text('token_hash').notNull().unique(),
     status: text('status').$type<InvitationStatus>().notNull().default('pending'),
+    // ON DELETE no action (explicit): invitations must survive deletion of the inviting user, to preserve the audit trail of who invited whom.
     invitedByUserId: uuid('invited_by_user_id')
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: 'no action' }),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

@@ -39,6 +39,12 @@ export class LastOwnerError extends Error {
   }
 }
 
+export class SelfTransferError extends Error {
+  constructor() {
+    super('Cannot transfer ownership to yourself');
+  }
+}
+
 export interface CreateOrganizationInput {
   name: string;
   slug?: string;
@@ -187,7 +193,7 @@ export async function transferOwnership(
   await withLockedMembers(db, ctx.organizationId, async (tx, members) => {
     const target = members.find((m) => m.userId === targetUserId);
     if (!target) throw new MemberNotFoundError();
-    if (targetUserId === ctx.userId) return;
+    if (targetUserId === ctx.userId) throw new SelfTransferError();
 
     await updateMemberRole(tx, ctx.organizationId, targetUserId, 'owner');
     await updateMemberRole(tx, ctx.organizationId, ctx.userId, 'admin');

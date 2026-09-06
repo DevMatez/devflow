@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import type {
   WebhookHandler,
   RawWebhookRequest,
@@ -78,7 +79,12 @@ export function createGoogleCalendarWebhookHandler(
 
       const expected = await options.getChannelToken(channelId);
       if (!expected) throw new Error('Unknown notification channel');
-      if (token !== expected) throw new Error('Invalid X-Goog-Channel-Token');
+
+      const actual = Buffer.from(token ?? '');
+      const expectedBuf = Buffer.from(expected);
+      if (actual.length !== expectedBuf.length || !timingSafeEqual(actual, expectedBuf)) {
+        throw new Error('Invalid X-Goog-Channel-Token');
+      }
     },
 
     extractDeliveryId(request: RawWebhookRequest): string {

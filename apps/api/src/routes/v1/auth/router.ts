@@ -1,5 +1,6 @@
 import { type FastifyInstance } from 'fastify';
 import { type ZodTypeProvider } from 'fastify-type-provider-zod';
+import { timingSafeEqual } from 'node:crypto';
 import type { UserId } from '@devflow/types';
 import { env } from '../../../config/env';
 import {
@@ -29,6 +30,13 @@ import { githubCallbackQuerySchema, authSessionResponseSchema } from './schema';
 
 // Tighter than the app-wide default (design doc §8) — brute-force/enumeration protection.
 const AUTH_RATE_LIMIT = { max: 10, timeWindow: '1 minute' };
+
+function statesMatch(expected: string, actual: string | undefined): boolean {
+  if (actual === undefined) return false;
+  const expectedBuf = Buffer.from(expected);
+  const actualBuf = Buffer.from(actual);
+  return expectedBuf.length === actualBuf.length && timingSafeEqual(expectedBuf, actualBuf);
+}
 
 function githubConfig(): GithubOAuthConfig {
   return {
@@ -89,7 +97,7 @@ export async function authRouter(app: FastifyInstance): Promise<void> {
       }
 
       const expectedState = consumeOAuthStateCookie(request, reply);
-      if (!expectedState || expectedState !== state) {
+      if (!expectedState || !statesMatch(expectedState, state)) {
         return reply.badRequest('Invalid or expired OAuth state');
       }
 

@@ -1,4 +1,4 @@
-import { pgTable, uuid, timestamp, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, timestamp, primaryKey, index } from 'drizzle-orm/pg-core';
 import { teams } from './teams';
 import { users } from './users';
 
@@ -13,6 +13,11 @@ export const teamMembers = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [primaryKey({ columns: [table.teamId, table.userId] })],
+  (table) => [
+    primaryKey({ columns: [table.teamId, table.userId] }),
+    // Supports "list all teams for a user" (userId isn't the leading column of the composite PK).
+    index('team_members_user_id_idx').on(table.userId),
+  ],
 );

@@ -59,11 +59,19 @@ export async function exchangeGoogleCode(
     }).toString(),
   });
 
+  if (!res.ok) {
+    // Google's token errors are normally JSON, but a gateway/proxy failure could return HTML/empty.
+    const message = await res
+      .json()
+      .then((body: unknown) => (body as GoogleTokenResponse).error)
+      .catch(() => undefined);
+    throw new GoogleOAuthError(message ?? `Google token exchange failed with status ${res.status}`);
+  }
+
   const data = (await res.json()) as GoogleTokenResponse;
-  if (!res.ok || !data.access_token || !data.refresh_token) {
+  if (!data.access_token || !data.refresh_token) {
     throw new GoogleOAuthError(
-      data.error ??
-        'Google did not return an access/refresh token (was access_type=offline + consent honored?)',
+      'Google did not return an access/refresh token (was access_type=offline + consent honored?)',
     );
   }
 

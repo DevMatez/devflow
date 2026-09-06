@@ -52,6 +52,10 @@ export async function exchangeSlackCode(
     }).toString(),
   });
 
+  if (!res.ok) {
+    throw new SlackOAuthError(`Slack OAuth request failed with status ${res.status}`);
+  }
+
   const data = (await res.json()) as SlackOAuthAccessResponse;
   if (!data.ok || !data.access_token || !data.bot_user_id || !data.team) {
     throw new SlackOAuthError(data.error ?? 'Slack did not return a bot token');

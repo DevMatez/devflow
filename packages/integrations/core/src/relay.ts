@@ -87,7 +87,7 @@ export async function relayWebhooksOnce(options: WebhookRelayOptions): Promise<W
       await options.processEvents(row, events);
       processed += 1;
     } catch (error) {
-      await options.markFailed(row.id, (error as Error).message);
+      await options.markFailed(row.id, error instanceof Error ? error.message : String(error));
     }
   }
 
