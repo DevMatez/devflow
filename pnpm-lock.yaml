@@ -218,6 +218,9 @@ importers:
       '@devflow/events':
         specifier: workspace:*
         version: link:../../packages/events
+      '@devflow/integrations-calendar':
+        specifier: workspace:*
+        version: link:../../packages/integrations/calendar
       '@devflow/integrations-core':
         specifier: workspace:*
         version: link:../../packages/integrations/core
@@ -447,6 +450,28 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.1
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.3
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(jsdom@27.4.0)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
+
+  packages/integrations/calendar:
+    dependencies:
+      '@devflow/integrations-core':
+        specifier: workspace:*
+        version: link:../core
+      '@devflow/types':
+        specifier: workspace:*
+        version: link:../../types
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
