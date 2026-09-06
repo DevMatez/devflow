@@ -267,4 +267,83 @@ describe('work-items routes', () => {
     });
     expect(badBody.statusCode).toBe(400);
   });
+
+  it('starts work: 202, advances to in_progress, sets execution running + branch intent', async () => {
+    const owner = await makeAuthedUser(app, 'start');
+    createdUserIds.push(owner.userId);
+    const { organizationId, projectId } = await makeOrgWithProject(owner, 'start');
+    const wi = await createWorkItem(app.db, {
+      organizationId,
+      projectId,
+      title: 'Start me',
+      externalProvider: 'plane',
+      externalIssueId: `issue-${crypto.randomUUID()}`,
+      externalIssueKey: 'PROJ-9',
+      workflowState: 'todo',
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/organizations/${organizationId}/work-items/${wi.id}/start`,
+      headers: { cookie: owner.cookie },
+      payload: { repo: 'acme/widgets' },
+    });
+    expect(res.statusCode).toBe(202);
+    expect(res.json()).toMatchObject({ workItemId: wi.id, status: 'starting' });
+
+    const detail = await app.inject({
+      method: 'GET',
+      url: `/api/v1/organizations/${organizationId}/work-items/${wi.id}`,
+      headers: { cookie: owner.cookie },
+    });
+    expect(detail.json().workflowState).toBe('in_progress');
+    expect(detail.json().workflowExecutionStatus).toBe('running');
+    expect(detail.json().branchRef).toMatchObject({ repo: 'acme/widgets', status: 'pending' });
+  });
+
+  it('rejects a bad repo (400), a non-developer (403), and a second start while running (409)', async () => {
+    const owner = await makeAuthedUser(app, 'start-guard');
+    createdUserIds.push(owner.userId);
+    const { organizationId, projectId } = await makeOrgWithProject(owner, 'start-guard');
+    const wi = await createWorkItem(app.db, {
+      organizationId,
+      projectId,
+      title: 'Guarded',
+      externalProvider: 'plane',
+      externalIssueId: `issue-${crypto.randomUUID()}`,
+      workflowState: 'todo',
+    });
+
+    const badRepo = await app.inject({
+      method: 'POST',
+      url: `/api/v1/organizations/${organizationId}/work-items/${wi.id}/start`,
+      headers: { cookie: owner.cookie },
+      payload: { repo: 'not-a-repo' },
+    });
+    expect(badRepo.statusCode).toBe(400);
+
+    const outsider = await makeAuthedUser(app, 'start-outsider');
+    createdUserIds.push(outsider.userId);
+    const forbidden = await app.inject({
+      method: 'POST',
+      url: `/api/v1/organizations/${organizationId}/work-items/${wi.id}/start`,
+      headers: { cookie: outsider.cookie },
+      payload: { repo: 'acme/widgets' },
+    });
+    expect(forbidden.statusCode).toBe(403);
+
+    await app.inject({
+      method: 'POST',
+      url: `/api/v1/organizations/${organizationId}/work-items/${wi.id}/start`,
+      headers: { cookie: owner.cookie },
+      payload: { repo: 'acme/widgets' },
+    });
+    const secondStart = await app.inject({
+      method: 'POST',
+      url: `/api/v1/organizations/${organizationId}/work-items/${wi.id}/start`,
+      headers: { cookie: owner.cookie },
+      payload: { repo: 'acme/widgets' },
+    });
+    expect(secondStart.statusCode).toBe(409);
+  });
 });

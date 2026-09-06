@@ -2,10 +2,15 @@ import fp from 'fastify-plugin';
 import { randomUUID } from 'node:crypto';
 import { relayOutboxOnce, type EventRoute } from '@devflow/events';
 import { runWithCorrelationId } from '@devflow/observability';
+import { parseCredentialsKey } from '@devflow/integrations-core';
+import { env } from '../config/env';
 import { createSystemPingJob } from '../modules/system/jobs/system-ping.job';
 import { createSystemPingRoute } from '../modules/system/routing';
 import { createActivityProjectorJob } from '../modules/activity/jobs/activity-projector.job';
 import { createActivityRoutes, IGNORED_EVENT_TYPES } from '../modules/activity/routing';
+import { createCreateBranchJob } from '../modules/dev-workflow/jobs/create-branch.job';
+import { createCreatePrJob } from '../modules/dev-workflow/jobs/create-pr.job';
+import { createDevWorkflowRoutes } from '../modules/dev-workflow/routing';
 
 const RELAY_INTERVAL_MS = 2_000;
 
@@ -15,21 +20,26 @@ const RELAY_INTERVAL_MS = 2_000;
  * dedicated `apps/worker` process once there's enough job volume to warrant it.
  */
 export const outboxRelayPlugin = fp(async (app) => {
+  const credentialsKey = parseCredentialsKey(env.INTEGRATION_CREDENTIALS_KEY);
+
   const systemPingJob = createSystemPingJob(app.log);
   const activityProjectorJob = createActivityProjectorJob(app.db, app.log);
+  const createBranchJob = createCreateBranchJob(app.db, app.log, credentialsKey);
+  const createPrJob = createCreatePrJob(app.db, app.log, credentialsKey);
 
   const routes: EventRoute[] = [
     createSystemPingRoute(systemPingJob),
     ...createActivityRoutes(activityProjectorJob),
+    ...createDevWorkflowRoutes(createBranchJob, createPrJob),
   ];
 
+  const runInContext = <T>(correlationId: string, fn: () => T): T =>
+    runWithCorrelationId(correlationId, fn);
   const workers = [
-    systemPingJob.createWorker(app.redis, {
-      runInContext: (correlationId, fn) => runWithCorrelationId(correlationId, fn),
-    }),
-    activityProjectorJob.createWorker(app.redis, {
-      runInContext: (correlationId, fn) => runWithCorrelationId(correlationId, fn),
-    }),
+    systemPingJob.createWorker(app.redis, { runInContext }),
+    activityProjectorJob.createWorker(app.redis, { runInContext }),
+    createBranchJob.createWorker(app.redis, { runInContext }),
+    createPrJob.createWorker(app.redis, { runInContext }),
   ];
 
   const relayId = `api-${randomUUID()}`;

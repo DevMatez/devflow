@@ -1,6 +1,6 @@
 import { schema, type Database, type DatabaseTransaction } from '@devflow/database';
 import { and, desc, eq, sql } from 'drizzle-orm';
-import type { WorkflowState } from '@devflow/types';
+import type { WorkflowState, WorkflowExecutionStatus, BranchRef, PrRef } from '@devflow/types';
 
 export type WorkItemRow = typeof schema.workItems.$inferSelect;
 
@@ -109,4 +109,48 @@ export async function applyStateChange(
     )
     .returning();
   return row;
+}
+
+/** Sets the automation-health axis, independent of workflow_state (design §4.5). */
+export async function setWorkflowExecutionStatus(
+  db: Database | DatabaseTransaction,
+  organizationId: string,
+  workItemId: string,
+  status: WorkflowExecutionStatus,
+  error: string | null = null,
+): Promise<void> {
+  await db
+    .update(schema.workItems)
+    .set({ workflowExecutionStatus: status, workflowExecutionError: error, updatedAt: new Date() })
+    .where(
+      and(eq(schema.workItems.organizationId, organizationId), eq(schema.workItems.id, workItemId)),
+    );
+}
+
+export async function setBranchRef(
+  db: Database | DatabaseTransaction,
+  organizationId: string,
+  workItemId: string,
+  branchRef: BranchRef,
+): Promise<void> {
+  await db
+    .update(schema.workItems)
+    .set({ branchRef, updatedAt: new Date() })
+    .where(
+      and(eq(schema.workItems.organizationId, organizationId), eq(schema.workItems.id, workItemId)),
+    );
+}
+
+export async function setPrRef(
+  db: Database | DatabaseTransaction,
+  organizationId: string,
+  workItemId: string,
+  prRef: PrRef,
+): Promise<void> {
+  await db
+    .update(schema.workItems)
+    .set({ prRef, updatedAt: new Date() })
+    .where(
+      and(eq(schema.workItems.organizationId, organizationId), eq(schema.workItems.id, workItemId)),
+    );
 }

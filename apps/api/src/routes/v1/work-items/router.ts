@@ -13,6 +13,10 @@ import {
   type ResolvePmAdapter,
 } from '../../../modules/work-items/service/work-items.service';
 import {
+  startWork,
+  WorkflowExecutionConflictError,
+} from '../../../modules/dev-workflow/service/dev-workflow.service';
+import {
   findWorkItemById,
   listWorkItems,
   type WorkItemRow,
@@ -22,6 +26,8 @@ import {
   createWorkItemBodySchema,
   listWorkItemsQuerySchema,
   projectWorkItemsParamsSchema,
+  startWorkBodySchema,
+  startWorkResponseSchema,
   transitionWorkItemBodySchema,
   workItemParamsSchema,
   workItemsListResponseSchema,
@@ -181,6 +187,45 @@ export async function workItemsRouter(
       } catch (error) {
         if (error instanceof WorkItemNotFoundError) return reply.notFound();
         if (error instanceof InvalidTransitionError) return reply.conflict(error.message);
+        throw error;
+      }
+    },
+  );
+
+  typed.post(
+    '/organizations/:organizationId/work-items/:workItemId/start',
+    {
+      preHandler: requireOrgRole('developer'),
+      schema: {
+        tags: ['Work Items'],
+        summary: 'Start work — create branch + PR via the source-control port',
+        description:
+          'Outbox-driven saga: advances the work item and kicks off branch/PR creation. Returns 202. Developer+.',
+        params: workItemParamsSchema,
+        body: startWorkBodySchema,
+        response: { 202: startWorkResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      if (!request.orgContext) return reply.forbidden();
+
+      try {
+        const result = await startWork(
+          app.db,
+          request.orgContext,
+          {
+            workItemId: request.params.workItemId,
+            repo: request.body.repo,
+            baseBranch: request.body.baseBranch,
+          },
+          request.correlationId,
+        );
+        reply.code(202);
+        return result;
+      } catch (error) {
+        if (error instanceof WorkItemNotFoundError) return reply.notFound();
+        if (error instanceof InvalidTransitionError) return reply.conflict(error.message);
+        if (error instanceof WorkflowExecutionConflictError) return reply.conflict(error.message);
         throw error;
       }
     },
