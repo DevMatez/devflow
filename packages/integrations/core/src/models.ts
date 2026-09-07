@@ -81,3 +81,20 @@ export interface FreeBusySlot {
   start: string;
   end: string;
 }
+
+/**
+ * Canonical payload for `projectmanagement.issue.*` events (design §6.2).
+ * Adapters normalize their raw webhook body into this so the reconciler stays
+ * provider-agnostic. `statusClass` is the coarse lifecycle class DevFlow
+ * reconciles on; `updatedAt` is the reconciliation cursor (§6.4).
+ */
+export interface NormalizedIssueEvent {
+  externalId: string;
+  key: string | null;
+  title: string;
+  statusClass: 'open' | 'completed' | 'cancelled';
+  assigneeExternalId: string | null;
+  projectExternalId: string | null;
+  url: string | null;
+  updatedAt: string | null;
+}
