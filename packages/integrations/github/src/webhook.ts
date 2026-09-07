@@ -97,6 +97,10 @@ function normalizePullRequestEvent(payload: Record<string, unknown>): Normalized
     opened: 'sourcecontrol.pull_request.opened',
     synchronize: 'sourcecontrol.pull_request.updated',
     edited: 'sourcecontrol.pull_request.updated',
+    // GitHub has no distinct "reopened" canonical type (design §6.3) — the
+    // reconciler derives a reopen from an `updated` event whose PR is open
+    // again against a work item it had already marked terminal.
+    reopened: 'sourcecontrol.pull_request.updated',
     closed:
       pr.state === 'merged'
         ? 'sourcecontrol.pull_request.merged'

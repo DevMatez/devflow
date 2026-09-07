@@ -12,7 +12,11 @@ import { createCreateBranchJob } from '../modules/dev-workflow/jobs/create-branc
 import { createCreatePrJob } from '../modules/dev-workflow/jobs/create-pr.job';
 import { createDevWorkflowRoutes } from '../modules/dev-workflow/routing';
 import { createReconcileIssueJob } from '../modules/reconciliation/jobs/reconcile-issue.job';
-import { createReconciliationRoutes } from '../modules/reconciliation/routing';
+import { createReconcilePrJob } from '../modules/reconciliation/jobs/reconcile-pr.job';
+import {
+  createReconciliationRoutes,
+  createPrReconciliationRoutes,
+} from '../modules/reconciliation/routing';
 
 const RELAY_INTERVAL_MS = 2_000;
 
@@ -29,12 +33,14 @@ export const outboxRelayPlugin = fp(async (app) => {
   const createBranchJob = createCreateBranchJob(app.db, app.log, credentialsKey);
   const createPrJob = createCreatePrJob(app.db, app.log, credentialsKey);
   const reconcileIssueJob = createReconcileIssueJob(app.db, app.log);
+  const reconcilePrJob = createReconcilePrJob(app.db, app.log);
 
   const routes: EventRoute[] = [
     createSystemPingRoute(systemPingJob),
     ...createActivityRoutes(activityProjectorJob),
     ...createDevWorkflowRoutes(createBranchJob, createPrJob),
     ...createReconciliationRoutes(reconcileIssueJob),
+    ...createPrReconciliationRoutes(reconcilePrJob),
   ];
 
   const runInContext = <T>(correlationId: string, fn: () => T): T =>
@@ -45,6 +51,7 @@ export const outboxRelayPlugin = fp(async (app) => {
     createBranchJob.createWorker(app.redis, { runInContext }),
     createPrJob.createWorker(app.redis, { runInContext }),
     reconcileIssueJob.createWorker(app.redis, { runInContext }),
+    reconcilePrJob.createWorker(app.redis, { runInContext }),
   ];
 
   const relayId = `api-${randomUUID()}`;

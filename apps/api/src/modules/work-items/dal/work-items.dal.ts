@@ -209,3 +209,46 @@ export async function updateWorkItemMirror(
       and(eq(schema.workItems.organizationId, organizationId), eq(schema.workItems.id, workItemId)),
     );
 }
+
+/**
+ * Locks the work item matching a PR event (`FOR UPDATE`, design §6.1, §6.4):
+ * primary match is the `pr_ref` pointer (repo + number); fallback is the head
+ * branch (`branch_ref`) for the first `opened` before `pr_ref` is set. Must
+ * run inside a transaction.
+ */
+export async function lockWorkItemForPrEvent(
+  tx: DatabaseTransaction,
+  organizationId: string,
+  repo: string,
+  number: number,
+  headBranch: string,
+): Promise<WorkItemRow | undefined> {
+  const byPrRef = await tx
+    .select()
+    .from(schema.workItems)
+    .where(
+      and(
+        eq(schema.workItems.organizationId, organizationId),
+        sql`${schema.workItems.prRef}->>'repo' = ${repo}`,
+        sql`${schema.workItems.prRef}->>'number' = ${String(number)}`,
+      ),
+    )
+    .for('update')
+    .limit(1);
+  if (byPrRef[0]) return byPrRef[0];
+
+  const byBranch = await tx
+    .select()
+    .from(schema.workItems)
+    .where(
+      and(
+        eq(schema.workItems.organizationId, organizationId),
+        sql`${schema.workItems.branchRef}->>'repo' = ${repo}`,
+        sql`${schema.workItems.branchRef}->>'name' = ${headBranch}`,
+        sql`${schema.workItems.prRef} is null`,
+      ),
+    )
+    .for('update')
+    .limit(1);
+  return byBranch[0];
+}
