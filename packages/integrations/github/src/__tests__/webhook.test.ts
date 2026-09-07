@@ -160,6 +160,20 @@ describe('createGithubWebhookHandler: normalize', () => {
     expect(events[0]?.type).toBe('sourcecontrol.pull_request.closed');
   });
 
+  it('normalizes a pull_request reopened event as updated', async () => {
+    const events = await handler.normalize(
+      makeRequest(
+        {
+          action: 'reopened',
+          pull_request: { ...pullRequest, state: 'open' },
+          repository: { full_name: 'acme/widgets' },
+        },
+        { 'x-github-event': 'pull_request' },
+      ),
+    );
+    expect(events[0]?.type).toBe('sourcecontrol.pull_request.updated');
+  });
+
   it('ignores pull_request actions with no normalized mapping', async () => {
     const events = await handler.normalize(
       makeRequest(
