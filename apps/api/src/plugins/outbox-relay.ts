@@ -11,6 +11,8 @@ import { createActivityRoutes, IGNORED_EVENT_TYPES } from '../modules/activity/r
 import { createCreateBranchJob } from '../modules/dev-workflow/jobs/create-branch.job';
 import { createCreatePrJob } from '../modules/dev-workflow/jobs/create-pr.job';
 import { createDevWorkflowRoutes } from '../modules/dev-workflow/routing';
+import { createReconcileIssueJob } from '../modules/reconciliation/jobs/reconcile-issue.job';
+import { createReconciliationRoutes } from '../modules/reconciliation/routing';
 
 const RELAY_INTERVAL_MS = 2_000;
 
@@ -26,11 +28,13 @@ export const outboxRelayPlugin = fp(async (app) => {
   const activityProjectorJob = createActivityProjectorJob(app.db, app.log);
   const createBranchJob = createCreateBranchJob(app.db, app.log, credentialsKey);
   const createPrJob = createCreatePrJob(app.db, app.log, credentialsKey);
+  const reconcileIssueJob = createReconcileIssueJob(app.db, app.log);
 
   const routes: EventRoute[] = [
     createSystemPingRoute(systemPingJob),
     ...createActivityRoutes(activityProjectorJob),
     ...createDevWorkflowRoutes(createBranchJob, createPrJob),
+    ...createReconciliationRoutes(reconcileIssueJob),
   ];
 
   const runInContext = <T>(correlationId: string, fn: () => T): T =>
@@ -40,6 +44,7 @@ export const outboxRelayPlugin = fp(async (app) => {
     activityProjectorJob.createWorker(app.redis, { runInContext }),
     createBranchJob.createWorker(app.redis, { runInContext }),
     createPrJob.createWorker(app.redis, { runInContext }),
+    reconcileIssueJob.createWorker(app.redis, { runInContext }),
   ];
 
   const relayId = `api-${randomUUID()}`;

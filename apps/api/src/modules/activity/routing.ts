@@ -46,6 +46,7 @@ export const IGNORED_EVENT_TYPES: readonly string[] = [
   'sourcecontrol.check_run.updated',
   'sourcecontrol.comment.created',
   'sourcecontrol.pull_request_review.submitted',
+  'projectmanagement.issue.comment_created',
   // Wave 1 domain events with no Phase 1 consumer
   'organization.created',
   'organization.updated',

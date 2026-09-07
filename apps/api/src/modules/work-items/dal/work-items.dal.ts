@@ -15,6 +15,7 @@ export interface CreateWorkItemInput {
   externalAssigneeId?: string | null;
   assigneeUserId?: string | null;
   workflowState?: WorkflowState;
+  lastExternalVersion?: string | null;
 }
 
 /** One row per (organizationId, externalProvider, externalIssueId) — unique constraint enforces this (design §3.1). */
@@ -150,6 +151,60 @@ export async function setPrRef(
   await db
     .update(schema.workItems)
     .set({ prRef, updatedAt: new Date() })
+    .where(
+      and(eq(schema.workItems.organizationId, organizationId), eq(schema.workItems.id, workItemId)),
+    );
+}
+
+/**
+ * Locks the matched work item row (`FOR UPDATE`) so concurrent reconcile jobs
+ * for the same item serialize rather than interleave (design §6.4). Must run
+ * inside a transaction.
+ */
+export async function lockWorkItemByExternalIssue(
+  tx: DatabaseTransaction,
+  organizationId: string,
+  externalProvider: string,
+  externalIssueId: string,
+): Promise<WorkItemRow | undefined> {
+  const rows = await tx
+    .select()
+    .from(schema.workItems)
+    .where(
+      and(
+        eq(schema.workItems.organizationId, organizationId),
+        eq(schema.workItems.externalProvider, externalProvider),
+        eq(schema.workItems.externalIssueId, externalIssueId),
+      ),
+    )
+    .for('update')
+    .limit(1);
+  return rows[0];
+}
+
+export interface MirrorPatch {
+  title?: string;
+  externalIssueKey?: string | null;
+  externalAssigneeId?: string | null;
+  assigneeUserId?: string | null;
+  lastExternalVersion?: string | null;
+}
+
+/** Updates cached mirror columns + reconcile cursor (design §6.2, §6.4). Never touches workflow_state. */
+export async function updateWorkItemMirror(
+  db: Database | DatabaseTransaction,
+  organizationId: string,
+  workItemId: string,
+  patch: MirrorPatch,
+): Promise<void> {
+  await db
+    .update(schema.workItems)
+    .set({
+      ...patch,
+      lastReconciledAt: new Date(),
+      lastSyncedAt: new Date(),
+      updatedAt: new Date(),
+    })
     .where(
       and(eq(schema.workItems.organizationId, organizationId), eq(schema.workItems.id, workItemId)),
     );
