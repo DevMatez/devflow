@@ -1,4 +1,4 @@
-import type { Issue, Comment } from '@devflow/integrations-core';
+import type { Issue, Comment, NormalizedIssueEvent } from '@devflow/integrations-core';
 
 export interface PlaneWorkItem {
   id: string;
@@ -56,5 +56,39 @@ export function toComment(
     authorExternalId: comment.actor_id ?? comment.created_by_id ?? 'unknown',
     url: `https://app.plane.so/${workspaceSlug}/projects/${projectId}/issues/${comment.issue_id}`,
     createdAt: comment.created_at ?? comment.edited_at ?? new Date().toISOString(),
+  };
+}
+
+interface PlaneIssueWebhookData {
+  id?: string;
+  name?: string;
+  project_id?: string | null;
+  assignee_ids?: string[];
+  completed_at?: string | null;
+  updated_at?: string | null;
+}
+
+/** Plane v2 webhooks serialize nulls as the Python string `"None"`. */
+function planeNullable(value: unknown): string | null {
+  return value == null || value === 'None' || value === '' ? null : String(value);
+}
+
+/**
+ * Normalizes a Plane work-item webhook `data` object into the canonical issue
+ * event (design §6.2). The v2 webhook carries `completed_at` but not the state
+ * group, so completion is derived from `completed_at`; cancelled can't be told
+ * apart from open without a state lookup (deferred), so it never maps here.
+ */
+export function toNormalizedIssueEvent(data: unknown): NormalizedIssueEvent {
+  const item = (data ?? {}) as PlaneIssueWebhookData;
+  return {
+    externalId: String(item.id ?? ''),
+    key: null,
+    title: item.name ?? '',
+    statusClass: planeNullable(item.completed_at) ? 'completed' : 'open',
+    assigneeExternalId: item.assignee_ids?.[0] ?? null,
+    projectExternalId: planeNullable(item.project_id),
+    url: null,
+    updatedAt: planeNullable(item.updated_at),
   };
 }

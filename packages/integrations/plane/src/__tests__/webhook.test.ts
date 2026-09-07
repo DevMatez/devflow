@@ -128,9 +128,43 @@ describe('createPlaneWebhookHandler: normalize', () => {
       {
         type: 'projectmanagement.issue.created',
         aggregateId: 'item-1',
-        payload: { id: 'item-1', name: 'Test' },
+        payload: {
+          externalId: 'item-1',
+          key: null,
+          title: 'Test',
+          statusClass: 'open',
+          assigneeExternalId: null,
+          projectExternalId: null,
+          url: null,
+          updatedAt: null,
+        },
       },
     ]);
+  });
+
+  it('derives completed status from completed_at and treats "None" as null', async () => {
+    const handler = makeHandler();
+    const payload = {
+      ...basePayload,
+      event: 'workitem.updated',
+      data: {
+        id: 'item-1',
+        name: 'Done item',
+        project_id: 'proj-1',
+        assignee_ids: ['user-9'],
+        completed_at: '2026-03-31T11:44:41.249304+00:00',
+        updated_at: '2026-03-31T11:44:41.249304+00:00',
+      },
+    };
+    const events = await handler.normalize(
+      makeRequest(payload, { 'x-plane-event': 'workitem.updated' }),
+    );
+    expect(events[0]?.payload).toMatchObject({
+      statusClass: 'completed',
+      assigneeExternalId: 'user-9',
+      projectExternalId: 'proj-1',
+      updatedAt: '2026-03-31T11:44:41.249304+00:00',
+    });
   });
 
   it('normalizes a workitem.updated event', async () => {

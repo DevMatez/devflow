@@ -5,6 +5,7 @@ import type {
   ResolvedConnection,
   NormalizedWebhookEvent,
 } from '@devflow/integrations-core';
+import { toNormalizedIssueEvent } from './mappers';
 
 export interface PlaneWebhookHandlerOptions {
   /**
@@ -92,5 +93,8 @@ function normalizeEvent(
 ): NormalizedWebhookEvent[] {
   const type = EVENT_TYPE_MAP[eventName];
   if (!type) return [];
+  if (type === 'projectmanagement.issue.created' || type === 'projectmanagement.issue.updated') {
+    return [{ type, aggregateId: entityId, payload: toNormalizedIssueEvent(data) }];
+  }
   return [{ type, aggregateId: entityId, payload: data ?? {} }];
 }
