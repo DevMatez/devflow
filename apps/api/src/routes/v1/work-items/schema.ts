@@ -40,6 +40,17 @@ export const transitionWorkItemBodySchema = z
     path: ['to'],
   });
 
+export const startWorkBodySchema = z.object({
+  /** The GitHub repo (owner/name) the branch + PR are created in. */
+  repo: z.string().regex(/^[^/\s]+\/[^/\s]+$/, 'expected "owner/name"'),
+  baseBranch: z.string().min(1).optional(),
+});
+
+export const startWorkResponseSchema = z.object({
+  workItemId: z.string(),
+  status: z.literal('starting'),
+});
+
 export const workItemResponseSchema = z.object({
   id: z.string(),
   projectId: z.string(),

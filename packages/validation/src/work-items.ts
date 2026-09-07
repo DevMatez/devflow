@@ -6,6 +6,7 @@ import { branchRefStatusSchema, prRefStateSchema } from './enums';
 export const branchRefSchema = z.object({
   repo: z.string().min(1),
   name: z.string().min(1),
+  base: z.string().min(1).optional(),
   url: z.string().url().optional(),
   status: branchRefStatusSchema,
 });

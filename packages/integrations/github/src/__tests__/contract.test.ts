@@ -91,8 +91,11 @@ function fakeFetch(): typeof fetch {
         }),
       'GET /repos/acme/widgets/git/ref/heads%2Fmain': () =>
         jsonResponse({ object: { sha: 'sha123' } }),
+      'GET /repos/acme/widgets/git/ref/heads%2Fcontract-test-branch': () =>
+        jsonResponse({ message: 'Not Found' }, 404),
       'POST /repos/acme/widgets/git/refs': () =>
         jsonResponse({ ref: 'refs/heads/contract-test-branch', object: { sha: 'sha123' } }, 201),
+      'GET /repos/acme/widgets/pulls': () => jsonResponse([]),
       'POST /repos/acme/widgets/pulls': () => jsonResponse(pullRequestFixture, 201),
       'GET /repos/acme/widgets/pulls/7': () => jsonResponse(pullRequestFixture),
       'POST /repos/acme/widgets/issues/7/comments': () =>

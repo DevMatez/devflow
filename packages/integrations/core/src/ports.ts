@@ -51,7 +51,14 @@ export interface UpsertCheckRunInput {
 export interface SourceControlPort {
   listRepositories(ctx: ProviderContext): Promise<Repository[]>;
   createBranch(ctx: ProviderContext, input: CreateBranchInput): Promise<Branch>;
+  /** Idempotent create: returns the existing branch if one with `name` already exists (design §4.3). */
+  findOrCreateBranch(ctx: ProviderContext, input: CreateBranchInput): Promise<Branch>;
   createPullRequest(ctx: ProviderContext, input: CreatePullRequestInput): Promise<PullRequest>;
+  /** Idempotent create: returns the existing open PR for `headRef`→`baseRef` if one exists (design §4.3). */
+  findOrCreatePullRequest(
+    ctx: ProviderContext,
+    input: CreatePullRequestInput,
+  ): Promise<PullRequest>;
   getPullRequest(
     ctx: ProviderContext,
     input: { repo: string; number: number },
