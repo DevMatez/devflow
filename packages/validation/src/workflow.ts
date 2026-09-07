@@ -12,6 +12,7 @@ export const workflowConfigSchema = z.object({
       requireAiReview: z.boolean().default(true),
     })
     .default({ requiredApprovals: 1, requireAiReview: true }),
+  notificationChannelId: z.string().min(1).optional(),
 });
 
 // Fails to compile if the schema output and WorkflowConfig drift apart.

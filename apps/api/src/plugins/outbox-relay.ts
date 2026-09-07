@@ -17,6 +17,8 @@ import {
   createReconciliationRoutes,
   createPrReconciliationRoutes,
 } from '../modules/reconciliation/routing';
+import { createNotifySlackJob } from '../modules/notifications/jobs/notify-slack.job';
+import { createNotificationRoutes } from '../modules/notifications/routing';
 
 const RELAY_INTERVAL_MS = 2_000;
 
@@ -34,6 +36,7 @@ export const outboxRelayPlugin = fp(async (app) => {
   const createPrJob = createCreatePrJob(app.db, app.log, credentialsKey);
   const reconcileIssueJob = createReconcileIssueJob(app.db, app.log);
   const reconcilePrJob = createReconcilePrJob(app.db, app.log);
+  const notifySlackJob = createNotifySlackJob(app.db, app.log, credentialsKey);
 
   const routes: EventRoute[] = [
     createSystemPingRoute(systemPingJob),
@@ -41,6 +44,7 @@ export const outboxRelayPlugin = fp(async (app) => {
     ...createDevWorkflowRoutes(createBranchJob, createPrJob),
     ...createReconciliationRoutes(reconcileIssueJob),
     ...createPrReconciliationRoutes(reconcilePrJob),
+    ...createNotificationRoutes(notifySlackJob),
   ];
 
   const runInContext = <T>(correlationId: string, fn: () => T): T =>
@@ -52,6 +56,7 @@ export const outboxRelayPlugin = fp(async (app) => {
     createPrJob.createWorker(app.redis, { runInContext }),
     reconcileIssueJob.createWorker(app.redis, { runInContext }),
     reconcilePrJob.createWorker(app.redis, { runInContext }),
+    notifySlackJob.createWorker(app.redis, { runInContext }),
   ];
 
   const relayId = `api-${randomUUID()}`;

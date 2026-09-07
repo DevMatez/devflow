@@ -9,4 +9,6 @@ export interface WorkflowConfig {
   branchNamingPattern: string;
   prTitleTemplate: string;
   reviewPolicy: ReviewPolicy;
+  /** Slack channel the notify-slack consumer posts to; absent = notifications skipped (design §15.3). */
+  notificationChannelId?: string;
 }
