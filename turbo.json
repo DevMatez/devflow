@@ -1,0 +1,77 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "globalDependencies": ["**/.env.*local", "tsconfig.base.json"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "GITHUB_OAUTH_CLIENT_ID",
+        "GITHUB_OAUTH_CLIENT_SECRET",
+        "GITHUB_OAUTH_CALLBACK_URL",
+        "WEB_APP_URL",
+        "SESSION_COOKIE_SECRET",
+        "SESSION_TTL_DAYS",
+        "SESSION_REFRESH_THRESHOLD_DAYS",
+        "OAUTH_STATE_TTL_MINUTES",
+        "INTEGRATION_CREDENTIALS_KEY",
+        "GITHUB_APP_ID",
+        "GITHUB_APP_PRIVATE_KEY_BASE64",
+        "GITHUB_APP_WEBHOOK_SECRET",
+        "GITHUB_APP_SLUG",
+        "SLACK_CLIENT_ID",
+        "SLACK_CLIENT_SECRET",
+        "SLACK_SIGNING_SECRET",
+        "SLACK_OAUTH_CALLBACK_URL",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_OAUTH_CALLBACK_URL",
+        "GOOGLE_CALENDAR_WEBHOOK_URL"
+      ]
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "GITHUB_OAUTH_CLIENT_ID",
+        "GITHUB_OAUTH_CLIENT_SECRET",
+        "GITHUB_OAUTH_CALLBACK_URL",
+        "WEB_APP_URL",
+        "SESSION_COOKIE_SECRET",
+        "SESSION_TTL_DAYS",
+        "SESSION_REFRESH_THRESHOLD_DAYS",
+        "OAUTH_STATE_TTL_MINUTES",
+        "INTEGRATION_CREDENTIALS_KEY",
+        "GITHUB_APP_ID",
+        "GITHUB_APP_PRIVATE_KEY_BASE64",
+        "GITHUB_APP_WEBHOOK_SECRET",
+        "GITHUB_APP_SLUG",
+        "SLACK_CLIENT_ID",
+        "SLACK_CLIENT_SECRET",
+        "SLACK_SIGNING_SECRET",
+        "SLACK_OAUTH_CALLBACK_URL",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_OAUTH_CALLBACK_URL",
+        "GOOGLE_CALENDAR_WEBHOOK_URL"
+      ]
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

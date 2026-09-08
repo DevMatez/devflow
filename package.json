@@ -1,0 +1,45 @@
+{
+    "name": "devflow",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Developer workflow orchestration platform (monorepo)",
+    "packageManager": "pnpm@9.12.3",
+    "engines": {
+        "node": ">=20.0.0",
+        "pnpm": ">=9.0.0"
+    },
+    "scripts": {
+        "build": "turbo run build",
+        "dev": "turbo run dev",
+        "lint": "turbo run lint",
+        "test": "turbo run test",
+        "typecheck": "turbo run typecheck",
+        "clean": "turbo run clean",
+        "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
+        "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
+        "prepare": "husky"
+    },
+    "lint-staged": {
+        "*.{ts,tsx}": [
+            "eslint --max-warnings=0",
+            "prettier --write"
+        ],
+        "*.{js,jsx,mjs,cjs,json,md,yaml,yml}": [
+            "prettier --write"
+        ]
+    },
+    "devDependencies": {
+        "@devflow/eslint-config": "workspace:*",
+        "eslint": "catalog:",
+        "husky": "catalog:",
+        "lint-staged": "catalog:",
+        "prettier": "catalog:",
+        "turbo": "catalog:",
+        "typescript": "catalog:"
+    },
+    "pnpm": {
+        "overrides": {
+            "typescript": "^5.6.3"
+        }
+    }
+}

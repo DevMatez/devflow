@@ -1,0 +1,52 @@
+{
+  "name": "@devflow/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rimraf dist .turbo"
+  },
+  "dependencies": {
+    "@devflow/config": "workspace:*",
+    "@devflow/database": "workspace:*",
+    "@devflow/events": "workspace:*",
+    "@devflow/integrations-core": "workspace:*",
+    "@devflow/integrations-github": "workspace:*",
+    "@devflow/integrations-plane": "workspace:*",
+    "@devflow/integrations-slack": "workspace:*",
+    "@devflow/integrations-calendar": "workspace:*",
+    "@devflow/observability": "workspace:*",
+    "@devflow/queue": "workspace:*",
+    "@devflow/types": "workspace:*",
+    "@devflow/validation": "workspace:*",
+    "@fastify/cookie": "catalog:",
+    "@fastify/cors": "catalog:",
+    "@fastify/helmet": "catalog:",
+    "@fastify/rate-limit": "catalog:",
+    "@fastify/sensible": "catalog:",
+    "@fastify/swagger": "catalog:",
+    "@scalar/fastify-api-reference": "catalog:",
+    "dotenv": "catalog:",
+    "drizzle-orm": "catalog:",
+    "fastify": "catalog:",
+    "fastify-plugin": "catalog:",
+    "fastify-type-provider-zod": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "pino-pretty": "catalog:",
+    "rimraf": "catalog:",
+    "tsup": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_ENV: test
+  DATABASE_URL: postgres://devflow:devflow@localhost:5432/devflow
+  REDIS_URL: redis://localhost:6379
+  # Not real secrets — CI never makes live GitHub OAuth calls (fetch is mocked
+  # in tests); these only need to satisfy apps/api's env schema.
+  GITHUB_OAUTH_CLIENT_ID: ci-test-client-id
+  GITHUB_OAUTH_CLIENT_SECRET: ci-test-client-secret
+  SESSION_COOKIE_SECRET: ci-test-session-cookie-secret-0123456789ab
+  # Not a real secret — valid 32-byte base64 value only to satisfy the env schema
+  # and @devflow/integrations-core's parseCredentialsKey() length check.
+  INTEGRATION_CREDENTIALS_KEY: 2/cY8CUOzyYqIfOq051qlbdzZ2L7wwDXo5jyioBuBgk=
+  # Not a real GitHub App — a throwaway RSA key only to satisfy the env schema
+  # and let @octokit/auth-app sign a JWT client-side (no live GitHub calls in tests).
+  GITHUB_APP_ID: 999999
+  GITHUB_APP_PRIVATE_KEY_BASE64: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBb1VMMm1iS3pTdXAwZ2ppV1hrVW9rdU1nVkNjeWZEU2xZRDRza3doMlJ1VXNHVVhXCks2VG1KVG9LSG5GajIrSE1SNVd4TmUwZlJYTXhiRFZtYloyZ2hHL1UvMkVxQXpSOU1lM1VqQis4UmpOTlMvZVoKUUFOaVpOTll2cm9rYWZXcjk4UnJEaG9BT0VKWDhjd2ZDdXk2a04zN0VuQlg3MFN4WWFHL1c1THFEMVJocHJQRgpMVkdtcVhwUlJoZEE5UU5BYlNVOGMycDZDdUlCa2VHa3lGRi9jMGYzaUthdWVzUTlZTTU2NTByMTNBczljSXBuCmpZUGYrcWh6OGRlSXBpV3RiVE1IY25aRVNnMnRkd1lvY0xnUXFyNi8wSThialRnL0F4U2lnYXdOVXlUMmRvYXEKYWpITVYyVDQ3WklMcTZGdmV1QUNtdUNqQ1dCa3NQRXpoK0d0RFFJREFRQUJBb0lCQUFwdnpJajIvVTZZYlBEdQptNkMvUmhoM2xhU01vdUpSLy9BQ0poMWYrMU9zU2xYYVpMbVBZd3UrdlYvcUE4WDd6NTVFYkdNcWxROElIUWM5ClQ0TkJvOTFlWllFZnR6bmM0RXRtY282ZEVURFQ2aWxEL1ltY2puWXJEWC9PaVVQSVVCaHBnR281dVpEcWprbUsKWmVudGwwZC83bHRycE8xSjIxY1B3bFE1Wm1lV2VvaHJLN0paeFlvTlY0OEJCYUVDNTZPT2lzcFIyakdvVlRzZQpvMUkzR3BsT3hFU3BxbXl3SE1iSUJ2UnZmWUxYcHZhZW9rN01JVm83VnRUZm9BVVAwaGhDQVNRcHNkZnFBMTFoCjZkUjFyeExEdXRRM1AyRmVlZjY4em93bjlob2k0Tm9WRFcwR2xIazJKcnI5ZTRMdVZsNVMxSi9GV2w5TW5tZWoKZEdPUUd0RUNnWUVBNFdJM251c3J5Mjc4Zzd4K00vbFVxUjdTazN0WUFOUHJpcng1VDBac01WOFRzMDVoWUJQdQpHNzdUT1V2Y3MwYlJ2VU10czluTVNpU09kR2RQaFJ0RlJsNGpHMTYrQXpJaG96dndGOGlvU1MxckxhYjRxQmpUCmI1ay81bTNoRURNMS9ma0taeUd0QWtiTUg4NzlRcG5walgxeW1QTEt3Ym5Cc09jbEJKczhyQlVDZ1lFQXR5cmgKdUwyNmpNNTJHYzU5UjJmZU82aGM5Y0FOblMrd0w3VDVYNEZUclZzdzRjcU9SWHBVUnc5VUJwVExlN0NXRVgrQQpNaGQxaS9uNHZQeGRoNWNULzF6TGRGSVQwRjg5eG56TURrZXoweXZyQjFqUHlJeXlHckhSUnZWdTdpYUxMRGU0Ck9kenZDODRiZmdEblF3WVVKaWNBSytnQS9RRld0eWNXRm1zMkl4a0NnWUF5c3JzOFBqNU50cHVLcnAzYzV4c0sKSityS1RoYVBxUnYweTB5bWJucnI2QzB3U2xOUkgycVNSeXlRV09ZK1ZaSGNkdjRTMU0xRmFFKzdFM29wd09hbQpXNHFlSDRPeWlGWlV0NmpjVU1DNkpVTlVzNWgvaDRZWU5tclBWS3dwenJzNGRBckpCQ1E4dk53eDA0ZllzWEo5CjUxZ2QyNCtNWUZLWGpvY2ZNQ1JIdVFLQmdRQ2w2aTMwamNmQmEvTUdoVWh0dWVSUDNiMzJ6VFNId1g2eWVCZTcKTHdhQTdTMW1HWGl0N3BVUW1RM2Z1RUJwbGhjWldvamcxdWNmR0JyNzlRMHptT0lBV2luZy84ZjY0NHF0bExXeAo2YmsxKzM0MWRYa2hqSEI0UmNIdnFMb0c5dHJ4L3JiZGt3YmxocGpZbGpEbFFVaFhGdFRNOEthVWh2WHBpWG8wCmJJRHBZUUtCZ0Ivb3pWY2doUVF5TEdwSjJnTkdWRGVaWHJheXV0OEVpWk10TlpyZGhIUFUyZXM3WnJUV2JGSGQKUkIyVHJSTXZubVArb3gwSkphN0t3RjduWnNKNVl3VXoyNStvWERvMlhDNFZyWW5KcG1OaldJVThEZ25VVnNhVAp5TjBrakdNSWNCS0daVW5vTjBkTkpraENkbGlyTnNRTGpBTEJxYVdRRXZ1ang4Ykkxci8xCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
+  GITHUB_APP_WEBHOOK_SECRET: ci-test-github-app-webhook-secret
+  GITHUB_APP_SLUG: devflow-ci-test
+  # Not real secrets — CI never makes live Slack calls (fetch is mocked in tests).
+  SLACK_CLIENT_ID: ci-test-slack-client-id
+  SLACK_CLIENT_SECRET: ci-test-slack-client-secret
+  SLACK_SIGNING_SECRET: ci-test-slack-signing-secret
+  SLACK_OAUTH_CALLBACK_URL: http://localhost:4000/api/v1/integrations/slack/callback
+  # Not real secrets — CI never makes live Google calls (fetch is mocked in tests).
+  GOOGLE_CLIENT_ID: ci-test-google-client-id
+  GOOGLE_CLIENT_SECRET: ci-test-google-client-secret
+  GOOGLE_OAUTH_CALLBACK_URL: http://localhost:4000/api/v1/integrations/calendar/callback
+  GOOGLE_CALENDAR_WEBHOOK_URL: http://localhost:4000/api/v1/webhooks/calendar
+
+jobs:
+  ci:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: devflow
+          POSTGRES_PASSWORD: devflow
+          POSTGRES_DB: devflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U devflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm turbo run lint --ui=stream
+
+      - name: Typecheck
+        run: pnpm turbo run typecheck --ui=stream
+
+      - name: Test
+        run: pnpm turbo run test --ui=stream
+
+      - name: Build
+        run: pnpm turbo run build --ui=stream
