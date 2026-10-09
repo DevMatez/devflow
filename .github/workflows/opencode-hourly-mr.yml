@@ -53,11 +53,15 @@ jobs:
                not system/activity notes. Unresolved reviewer change-requests
                and questions are "new activity" — that filter IS the new-
                activity detection (resolved threads need no action).
-               - Code fix requested AND token can push the MR branch:
-                 shallow-clone to /tmp, apply a minimal scoped fix, run the
-                 fastest relevant check only (lint/typecheck, never full e2e),
-                 commit and push to the MR branch, resolve the discussion and
-                 reply via the API.
+               - Code fix requested: determine the push target first — if the
+                 MR's source project differs from its target project (fork
+                 workflow), clone and push the SOURCE (fork) project/branch,
+                 which you own. If same project, verify push access via
+                 members/all/<my id> (access_level >= 30) before cloning.
+                 Then: shallow-clone to /tmp, apply a minimal scoped fix, run
+                 the fastest relevant check only (lint/typecheck, never full
+                 e2e), commit and push, resolve the discussion and reply via
+                 the API.
                - Question only: reply via the API, no code changes.
                - Cannot push: note exactly what a human must do in the log.
 
@@ -72,17 +76,22 @@ jobs:
                `good first issue` in a project where I am a member.
                Skip anything touching >5 files, migrations, auth/security,
                or needing product decisions. If nothing qualifies, stop.
-            3. Verify push access first: GET /projects/:id/members/all/<my id>
-               must show access_level >= 30 (Developer). If lower or the call
-               fails: do NOT fork upstream projects unsolicited — log the
-               candidate as "needs human (no push access)" and stop.
+            3. Determine where to push: if members/all/<my id> shows
+               access_level >= 30, push to the project itself. Else look for
+               an existing fork you own (GET /projects/:id/forks?owned=true,
+               or match forked_from_project.id == :id in your project list).
+               If a fork exists, push the `bot/` branch there and open the MR
+               fork → upstream. If NO fork exists, do NOT create one
+               unsolicited — log the candidate as "needs human (no push
+               access, no fork)" and stop.
             4. Implement with a test where the project has a test setup, run
-               the fastest relevant check, push branch `bot/<issue-iid>-<slug>`,
-               and open the MR with title prefix `[bot]` and a description
-               that discloses it was raised autonomously, links the issue,
-               and asks for human review. Do NOT wait for the pipeline —
-               later hourly runs pick the MR up via Part A (author scope) and
-               fix any pipeline failures then.
+               the fastest relevant check, push branch `bot/<issue-iid>-<slug>`
+               to the target from step 3, and open the MR with title prefix
+               `[bot]` and a description that discloses it was raised
+               autonomously, links the issue, notes the fork source when
+               applicable, and asks for human review. Do NOT wait for the
+               pipeline — later hourly runs pick the MR up via Part A (author
+               scope) and fix any pipeline failures then.
 
             PART C — run log summary (always): MRs checked (A), fixes pushed,
             replies posted, proactive candidate attempted or reason skipped,
