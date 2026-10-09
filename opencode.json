@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "small_model": "opencode/muse-spark-1.3-contributor-free",
+  "permission": {
+    "external_directory": {
+      "/tmp/*": "allow"
+    }
+  }
+}
