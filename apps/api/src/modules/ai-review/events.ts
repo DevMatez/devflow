@@ -26,6 +26,13 @@ export const AiReviewCompleted = defineEvent({
   }),
 });
 
+/** A user asked to re-run the review of an already-reviewed commit (design §8). */
+export const AiReviewRerunRequested = defineEvent({
+  type: 'ai.review_rerun_requested',
+  schemaVersion: 1,
+  schema: z.object({ ...reviewRef, reviewId: z.string(), actorUserId: z.string() }),
+});
+
 /** The AI call (or the pipeline) ultimately failed; the check resolves `neutral` (design §5.3). */
 export const AiReviewFailed = defineEvent({
   type: 'ai.review_failed',

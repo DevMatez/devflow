@@ -28,6 +28,22 @@ export function createAiReviewRoutes(
         headSha: p.headSha,
       }),
     }),
+    defineRoute({
+      name: 'ai-review.rerun',
+      event: { type: 'ai.review_rerun_requested' },
+      job,
+      toJobPayload: (p: {
+        workItemId: string;
+        repo: string;
+        prNumber: number;
+        headSha: string;
+      }) => ({
+        repo: p.repo,
+        prNumber: p.prNumber,
+        workItemId: p.workItemId,
+        headSha: p.headSha,
+      }),
+    }),
     ...(['opened', 'updated'] as const).map((kind) =>
       defineRoute({
         name: `ai-review.pr-${kind}`,

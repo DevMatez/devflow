@@ -118,6 +118,16 @@ function toLine(event: ProjectionEvent): Line {
         },
       };
 
+    case 'ai.review_rerun_requested':
+      return {
+        workItemId,
+        actorType: 'user',
+        actorId: (p.actorUserId as string | undefined) ?? null,
+        action: 'ai.review_rerun_requested',
+        summary: `AI review re-run requested for ${String(p.headSha).slice(0, 7)}`,
+        metadata: { reviewId: p.reviewId, headSha: p.headSha },
+      };
+
     case 'ai.review_failed':
       return {
         workItemId,
@@ -174,4 +184,5 @@ export const ACTIVITY_EVENT_TYPES = [
   'ai.review_requested',
   'ai.review_completed',
   'ai.review_failed',
+  'ai.review_rerun_requested',
 ] as const;

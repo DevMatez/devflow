@@ -12,10 +12,16 @@ import {
   failReview,
   findReviewById,
   insertOrFetchReview,
+  resetReviewForRerun,
   setReviewPointers,
   type AiReviewRow,
 } from '../dal/ai-reviews.dal';
-import { AiReviewCompleted, AiReviewFailed, AiReviewRequested } from '../events';
+import {
+  AiReviewCompleted,
+  AiReviewFailed,
+  AiReviewRequested,
+  AiReviewRerunRequested,
+} from '../events';
 import { policyConclusion } from '../policy';
 import { AI_REVIEW_CHECK_NAME, renderCheckOutput, renderSummaryComment } from '../render';
 
@@ -80,7 +86,8 @@ export async function runAiReview(
   let { headSha, headRef } = request;
   let prTitle: string | undefined;
   let baseRef: string | undefined;
-  if (!headSha || !headRef) {
+  // headRef is only needed to match the work item; a known work item + sha needs no lookup.
+  if (!headSha || (!headRef && !request.workItemId)) {
     const pr = await adapter.getPullRequest(pctx, { repo: request.repo, number: request.prNumber });
     if (pr.state !== 'open') return null; // nothing to gate on a closed/merged PR
     ({ headSha, headRef, baseRef, title: prTitle } = pr);
@@ -88,7 +95,13 @@ export async function runAiReview(
 
   const workItem = request.workItemId
     ? await findWorkItemById(db, request.organizationId, request.workItemId)
-    : await findWorkItemForPr(db, request.organizationId, request.repo, request.prNumber, headRef);
+    : await findWorkItemForPr(
+        db,
+        request.organizationId,
+        request.repo,
+        request.prNumber,
+        headRef ?? '',
+      );
   if (!workItem) {
     deps.logger?.info(
       { repo: request.repo, prNumber: request.prNumber },
@@ -269,4 +282,50 @@ export async function projectReview(
     });
   }
   return (await findReviewById(db, review.organizationId, review.id)) ?? review;
+}
+
+export class AiReviewNotFoundError extends Error {}
+/** The review is still pending — already queued or running. */
+export class AiReviewInProgressError extends Error {}
+
+/**
+ * Manual rerun for the same commit (design §8, §13 Q5): resets the row to
+ * pending and emits `ai.review_rerun_requested` in one transaction; the
+ * outbox relay routes it to the same ai-review.request job.
+ */
+export async function requestAiReviewRerun(
+  db: Database,
+  input: { organizationId: string; workItemId: string; reviewId: string; actorUserId: string },
+  correlationId: string,
+): Promise<AiReviewRow> {
+  return db.transaction(async (tx) => {
+    const existing = await findReviewById(tx, input.organizationId, input.reviewId);
+    if (!existing || existing.workItemId !== input.workItemId) throw new AiReviewNotFoundError();
+
+    const reset = await resetReviewForRerun(
+      tx,
+      input.organizationId,
+      input.reviewId,
+      REVIEW_PROMPT_VERSION,
+    );
+    if (!reset) throw new AiReviewInProgressError();
+
+    await publishOutbox(
+      tx,
+      AiReviewRerunRequested.create({
+        organizationId: input.organizationId,
+        aggregateId: input.workItemId,
+        correlationId,
+        payload: {
+          workItemId: input.workItemId,
+          reviewId: reset.id,
+          repo: reset.repo,
+          prNumber: reset.prNumber,
+          headSha: reset.headSha,
+          actorUserId: input.actorUserId,
+        },
+      }),
+    );
+    return reset;
+  });
 }
