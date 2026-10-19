@@ -1,6 +1,6 @@
 # Wave 1 — Identity & Tenancy: architecture & design
 
-**Status:** Draft — for review before implementation
+**Status:** Implemented
 **Scope source:** [`phase-1.md`](../../../phase-1.md) §4 · [`project.md`](../../../project.md) §9, §11
 **Modules covered:** Identity & Access, Organizations, Projects (built together — Projects and org membership both depend on Identity, and all three share the same org-scoping mechanism).
 

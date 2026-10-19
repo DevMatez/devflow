@@ -1,6 +1,6 @@
 # Wave 2 — Integration Layer: architecture & design
 
-**Status:** Draft — for review before implementation
+**Status:** Implemented
 **Scope source:** [`phase-1.md`](../../../phase-1.md) §5 · [`project.md`](../../../project.md) §8, §9, §10, §11
 **Modules covered:** Provider framework core, webhook ingestion, and all four adapters (GitHub, Plane, Slack, Calendar) — built together per the agreed scope, framework first as the pattern the adapters must prove out.
 

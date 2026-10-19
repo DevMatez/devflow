@@ -1,6 +1,6 @@
 # Phase 1 — MVP Build Plan
 
-**Status:** Planning
+**Status:** In progress — Waves 0–4 implemented (API); Wave 5 (frontend) next
 **Scope source:** `project.md` §13 (Roadmap — MVP)
 **Goal:** Ship the core end-to-end workflow — _ticket → start work → branch → PR → AI review → merge → notify → activity_ — for a single provider per integration category (**Plane, GitHub, Slack, Google Calendar**), on the modular-monolith architecture defined in `project.md`.
 
@@ -36,6 +36,22 @@ Wave 5  Frontend ........... web shell, dashboard, work items, PR review, integr
 ```
 
 Waves are dependency-ordered. Within a wave, modules can largely be built in parallel.
+
+### Progress
+
+| Wave                 | Status       | Design doc                                                                   |
+| -------------------- | ------------ | ---------------------------------------------------------------------------- |
+| 0 Foundation         | Implemented  | [`orchestration.md`](./apps/api/docs/orchestration.md)                       |
+| 1 Identity & Tenancy | Implemented  | [`wave-1-identity-tenancy.md`](./apps/api/docs/wave-1-identity-tenancy.md)   |
+| 2 Integration Layer  | Implemented  | [`wave-2-integration-layer.md`](./apps/api/docs/wave-2-integration-layer.md) |
+| 3 Core Domain        | Implemented  | [`wave-3-core-domain.md`](./apps/api/docs/wave-3-core-domain.md)             |
+| 4 AI                 | Implemented  | [`wave-4-ai.md`](./apps/api/docs/wave-4-ai.md)                               |
+| 5 Frontend           | Design draft | [`wave-5-frontend.md`](./apps/web/docs/wave-5-frontend.md)                   |
+
+Waves 0–4 are API-complete and covered by unit/integration tests. The Wave 1
+projects endpoints (designed in its §5/§7) were missed and landed later, as the
+first Wave 5 prerequisite. The end-to-end flow has not yet been exercised against
+live providers, and nothing in Phase 1 is user-facing until Wave 5.
 
 ---
 
@@ -191,11 +207,13 @@ Per the roadmap (§13):
 
 ## 12. Definition of done — Phase 1
 
-- [ ] A new user can sign up, create an org, and invite members with roles.
-- [ ] GitHub, Plane, Slack, and Google Calendar each connect via the provider framework and pass a signed, de-duplicated, normalized webhook round-trip.
-- [ ] A ticket can be created (with AI assistance) and started, producing a correctly named branch and PR.
-- [ ] Opening a PR triggers an AI review that posts a GitHub check and blocks merge until resolved.
-- [ ] PR/branch changes made outside the platform are reconciled, not silently overwritten.
-- [ ] Slack notifications fire on the key workflow events.
-- [ ] The full lifecycle is visible on the activity timeline, updating live in the UI.
-- [ ] Security, idempotency, observability, and test coverage cross-cutting requirements met (§10 above).
+Ticked items are implemented in the API and covered by tests; the UI for each lands in Wave 5.
+
+- [x] A new user can sign up, create an org, and invite members with roles.
+- [x] GitHub, Plane, Slack, and Google Calendar each connect via the provider framework and pass a signed, de-duplicated, normalized webhook round-trip.
+- [x] A ticket can be created (with AI assistance) and started, producing a correctly named branch and PR.
+- [x] Opening a PR triggers an AI review that posts a GitHub check and blocks merge until resolved (requires `devflow/ai-review` as a required check in branch protection — see `wave-4-ai.md` §14).
+- [x] PR/branch changes made outside the platform are reconciled, not silently overwritten.
+- [x] Slack notifications fire on the key workflow events.
+- [ ] The full lifecycle is visible on the activity timeline, updating live in the UI. _(timeline API done; UI + realtime are Wave 5)_
+- [ ] Security, idempotency, observability, and test coverage cross-cutting requirements met (§10 above). _(unit/integration in place; E2E full-flow test pending Wave 5)_

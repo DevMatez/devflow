@@ -1,6 +1,6 @@
 # `@devflow/web` — Next.js frontend
 
-**Wave:** 5 (Frontend) · **Status:** Scaffold  
+**Wave:** 5 (Frontend) · **Status:** Scaffold — design in [`docs/wave-5-frontend.md`](./docs/wave-5-frontend.md)  
 **Architecture refs:** `project.md` §4, §6, §9 · `phase-1.md` §8
 
 The web app is the developer workflow surface: connect tools, manage tickets, start work, review PRs, and follow the activity timeline. It is a **feature-module-oriented** Next.js App Router application inside the Devflow pnpm monorepo.
