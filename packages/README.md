@@ -18,12 +18,17 @@ workspace package under `packages/*`, documented in its own `README.md`.
 
 `ui` (Wave 0, shared frontend components) has not been split out of `apps/web` yet.
 
+## Wave 4 — AI (implemented)
+
+| Package                | Purpose                                                           | Depends on |
+| ---------------------- | ----------------------------------------------------------------- | ---------- |
+| [`ai`](./ai/README.md) | AI provider port, Anthropic adapter, and the code-review use case | _(none)_   |
+
 ## Not yet implemented
 
-| Package                | Purpose                                                            | Wave |
-| ---------------------- | ------------------------------------------------------------------ | ---- |
-| [`ai`](./ai/README.md) | AI provider port + code-review use case (contract/doc only so far) | 4    |
-| `integrations/*`       | Provider adapters (GitHub, Plane, Slack, Calendar)                 | 2    |
+| Package          | Purpose                                            | Wave |
+| ---------------- | -------------------------------------------------- | ---- |
+| `integrations/*` | Provider adapters (GitHub, Plane, Slack, Calendar) | 2    |
 
 ## How they fit together
 

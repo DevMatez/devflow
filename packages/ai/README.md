@@ -201,10 +201,10 @@ stays entirely outside this package (§9).
 
 ## Package relationships
 
-|                 |                                                                                                                                                                                                             |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Depends on**  | _(none)_ — zero internal `@devflow/*` dependencies                                                                                                                                                          |
-| **Consumed by** | Not implemented yet (contract/doc only). The future AI Review Pipeline module in `apps/api` (Wave 4) will call `reviewCode` from a `@devflow/queue` job handler and publish findings via `@devflow/events`. |
+|                 |                                                                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Depends on**  | _(none)_ — zero internal `@devflow/*` dependencies                                                                                                       |
+| **Consumed by** | `apps/api` (Wave 4): the AI Review Pipeline calls `reviewCode` from a `@devflow/queue` job handler; Ticket AI calls `generateStructuredOutput` directly. |
 
 `ProjectAiRules.version` makes every review result traceable to the exact
 rules version used — answering "why did the AI give a different result
@@ -273,4 +273,15 @@ provider retry × repair retry` and multiply AI spend.
 | `test`      | Run Vitest             |
 | `clean`     | Remove build artifacts |
 
-> Not started yet — this document defines the contract; implementation (starting with one adapter, e.g. OpenAI or Anthropic) follows.
+## Status
+
+Implemented (Wave 4, step 1) with one adapter: **Anthropic** (`providers/anthropic/`,
+`createAiProvider({ provider: 'anthropic', apiKey, capabilities })`).
+
+Adapter notes:
+
+- Structured output uses the Messages API's `output_config.format` (`json_schema`); the Zod schema is converted with `zod-to-json-schema` and then validated client-side by this package (`structured.ts`), with the one same-model repair attempt described above.
+- The SDK's own retries are disabled (`maxRetries: 0`) to keep the provider-call retry budget at 0.
+- A `stop_reason: "refusal"` maps to a non-retryable `AiProviderError`; a truncated structured response (`max_tokens`) maps to `AiValidationError` without a repair call. Server-side refusal fallbacks are deliberately **not** enabled — they would silently switch models, which this contract forbids.
+- `ReviewCodeInput` and `CodeReviewResult` are defined in `review/types.ts`. The model produces findings without `id`/`source`; `reviewCode` adds `source: 'ai'` and a default deterministic `id` (`defaultFindingId`: hash of file, line, severity and normalized title).
+- `review/prompts.ts` exports `REVIEW_PROMPT_VERSION`, which the pipeline persists as `promptVersion`.
