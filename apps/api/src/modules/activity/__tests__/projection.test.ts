@@ -114,4 +114,24 @@ describe('activity projection', () => {
       summary: 'Pull request #7 opened',
     });
   });
+
+  it('projects AI review completion with the policy conclusion as a system action', () => {
+    const row = projectActivity(
+      event('ai.review_completed', {
+        workItemId: 'wi-1',
+        repo: 'acme/widgets',
+        prNumber: 7,
+        headSha: 'abcdef123',
+        policyConclusion: 'failure',
+        findingCount: 2,
+      }),
+    );
+    expect(row).toMatchObject({
+      actorType: 'system',
+      action: 'ai.review_completed',
+      workItemId: 'wi-1',
+      metadata: { policyConclusion: 'failure', findingCount: 2 },
+    });
+    expect(row.summary).toContain('block merge');
+  });
 });

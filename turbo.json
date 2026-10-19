@@ -33,7 +33,12 @@
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
         "GOOGLE_OAUTH_CALLBACK_URL",
-        "GOOGLE_CALENDAR_WEBHOOK_URL"
+        "GOOGLE_CALENDAR_WEBHOOK_URL",
+        "ANTHROPIC_API_KEY",
+        "AI_CODE_REVIEW_MODEL",
+        "AI_CODE_REVIEW_EFFORT",
+        "AI_TICKET_DRAFT_MODEL",
+        "AI_TICKET_DRAFT_EFFORT"
       ]
     },
     "lint": {
@@ -67,7 +72,12 @@
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
         "GOOGLE_OAUTH_CALLBACK_URL",
-        "GOOGLE_CALENDAR_WEBHOOK_URL"
+        "GOOGLE_CALENDAR_WEBHOOK_URL",
+        "ANTHROPIC_API_KEY",
+        "AI_CODE_REVIEW_MODEL",
+        "AI_CODE_REVIEW_EFFORT",
+        "AI_TICKET_DRAFT_MODEL",
+        "AI_TICKET_DRAFT_EFFORT"
       ]
     },
     "clean": {

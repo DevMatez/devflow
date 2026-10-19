@@ -13,6 +13,7 @@ const pullRequestSchema: z.ZodType<PullRequest> = z.object({
   state: z.enum(['open', 'closed', 'merged']),
   url: z.string(),
   headRef: z.string(),
+  headSha: z.string(),
   baseRef: z.string(),
   authorExternalId: z.string(),
   createdAt: z.string(),

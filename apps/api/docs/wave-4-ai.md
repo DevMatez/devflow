@@ -1,6 +1,6 @@
 # Wave 4 — AI: architecture & design
 
-**Status:** Draft — for review before implementation
+**Status:** Implemented (§14 records the decisions taken and where the build deviates from this draft)
 **Scope source:** [`phase-1.md`](../../../phase-1.md) §7 · [`project.md`](../../../project.md) §3, §9, §11
 **Modules covered:** Ticket AI (generation/improvement), the AI Review Pipeline (diff → analyze → findings → GitHub check), and AI-review-as-merge-gate. `packages/ai` itself (the `AiProvider` port + `review/` layer) is **out of scope for redesign here** — its contract is already specified in [`packages/ai/README.md`](../../../packages/ai/README.md) (frozen doc, not yet implemented); this wave consumes that contract and implements one vendor adapter against it.
 
@@ -470,4 +470,29 @@ same four places as every prior wave (`env.ts`, `.env`/`.env.example`,
 
 ## 14. Design-review resolution log
 
-_(to be filled after the first review pass, mirroring Wave 2 §16 / Wave 3 §16)_
+Open questions (§13), resolved with this draft's own proposals:
+
+| Q   | Resolution                                                                                                                                                                                   |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Anthropic** first (`packages/ai/src/providers/anthropic`). Capability → model via env: `AI_CODE_REVIEW_MODEL` / `AI_TICKET_DRAFT_MODEL` (default `claude-opus-5-5`), plus `AI_*_EFFORT`.   |
+| 2   | **One summary comment** per reviewed commit, findings grouped by severity. The comment pointer is cached on the row (`comment_external_id`) so a retried projection never double-posts.      |
+| 3   | `REVIEW_PROMPT_VERSION` is a hand-bumped literal in `packages/ai/src/review/prompts.ts` (owned next to the prompt it versions), persisted as `prompt_version`.                               |
+| 4   | `GET …/ai-reviews` mirrors `listActivity`: `limit`/`offset`, capped at 200.                                                                                                                  |
+| 5   | Rerun **resets the existing row** to `pending` (clearing results and the comment pointer) and emits `ai.review_rerun_requested` in the same transaction; 409 while the row is still pending. |
+| 6   | `projectRules` deferred to Phase 2 — `reviewCode` is called with `projectRules: undefined`, `rules_version` stays null.                                                                      |
+
+Deviations from the draft, found while building:
+
+- **Duplicate-trigger collapse is enforced in the DB, not by job id.** `defineRoute` keys job ids on the event id, so the two PR origins produce two jobs. The `ai_reviews` unique key plus a lease (`claimed_by` = queue job id, stable across that job's retries; `claimed_at`, stale after 15 min) makes the second job a no-op, so one commit → one model call. Covered by the "two near-simultaneous triggers" test.
+- **`devworkflow.pull_request_opened` gains an optional `headSha`** (optional so older events still parse). When a trigger lacks the sha, the job reads it from `getPullRequest`.
+- **`UpsertCheckRunInput.output`** (optional `{ title, summary }`) added to the port and GitHub adapter so the check page shows the conclusion and findings, not just a colour.
+- **A fourth event, `ai.review_rerun_requested`**, routes manual reruns through the outbox to the same job and lands on the timeline as a user action.
+- **Error semantics:** a non-retryable `AiError` (validation, auth, configuration, refusal) resolves the review immediately as `failed` + `neutral` check; retryable errors go back to the queue (3 attempts, exponential backoff) and only the last attempt degrades to `neutral` (then the job is dead-lettered as usual).
+- **AI is optional at boot.** With `ANTHROPIC_API_KEY` unset the review job/routes are not wired and the draft/rerun endpoints return 503; nothing else changes. CI needs no key (tests inject fake providers).
+- HTTP routes live in `routes/v1/ai/` (the repo's router convention) rather than under `modules/*/routes`.
+
+### Enabling the merge gate on a repository (manual for MVP)
+
+1. Set `ANTHROPIC_API_KEY` (and optionally the `AI_*` model/effort vars) on the API.
+2. Open or push to a PR linked to a work item once, so GitHub learns the `devflow/ai-review` check name.
+3. In the repo's branch protection (or ruleset) for the default branch, add **`devflow/ai-review`** as a required status check. A `neutral` conclusion (AI outage) satisfies it; `failure` (a critical finding) blocks merge.

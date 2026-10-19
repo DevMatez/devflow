@@ -45,6 +45,7 @@ const prFixture = {
   state: 'open' as const,
   url: 'https://github.com/acme/widgets/pull/7',
   headRef: 'feature/PROJ-1-x',
+  headSha: 'abc123',
   baseRef: 'main',
   authorExternalId: '42',
   createdAt: '2026-01-01T00:00:00Z',

@@ -23,6 +23,8 @@ export const DevWorkflowPullRequestOpened = defineEvent({
     repo: z.string(),
     number: z.number(),
     url: z.string(),
+    /** Added in Wave 4 (AI review trigger); optional so earlier events still parse. */
+    headSha: z.string().optional(),
   }),
 });
 

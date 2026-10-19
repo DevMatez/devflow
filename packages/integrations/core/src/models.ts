@@ -23,6 +23,8 @@ export interface PullRequest {
   state: PullRequestState;
   url: string;
   headRef: string;
+  /** Commit sha at the PR head — required by upsertCheckRun (Wave 4 §3.1). */
+  headSha: string;
   baseRef: string;
   authorExternalId: string;
   createdAt: string;

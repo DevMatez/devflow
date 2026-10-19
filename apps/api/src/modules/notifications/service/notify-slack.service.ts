@@ -56,6 +56,12 @@ function messageFor(event: NotifiableEvent, title: string): string | null {
       return `:twisted_rightwards_arrows: Pull request opened for *${title}*: ${String(p.url ?? '')}`;
     case 'workitem.state_changed':
       return p.to === 'done' ? `:white_check_mark: *${title}* is done` : null;
+    case 'ai.review_completed':
+      return p.policyConclusion === 'failure'
+        ? `:no_entry: AI review found critical issues on *${title}* (${String(p.repo)}#${String(p.prNumber)}) — merge is blocked`
+        : `:mag: AI review passed for *${title}* (${String(p.findingCount)} non-blocking finding(s))`;
+    case 'ai.review_failed':
+      return `:warning: AI review could not complete for *${title}* — human review required`;
     default:
       return null;
   }

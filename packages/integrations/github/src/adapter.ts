@@ -203,6 +203,7 @@ export function createGithubSourceControlAdapter(options: GithubAdapterOptions):
               status: input.status,
               conclusion: input.conclusion ?? undefined,
               details_url: input.detailsUrl,
+              output: input.output,
             })
           ).data
         : (
@@ -214,6 +215,7 @@ export function createGithubSourceControlAdapter(options: GithubAdapterOptions):
               status: input.status,
               conclusion: input.conclusion ?? undefined,
               details_url: input.detailsUrl,
+              output: input.output,
             })
           ).data;
 

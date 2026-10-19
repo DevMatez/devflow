@@ -19,6 +19,9 @@ import {
 } from '../modules/reconciliation/routing';
 import { createNotifySlackJob } from '../modules/notifications/jobs/notify-slack.job';
 import { createNotificationRoutes } from '../modules/notifications/routing';
+import { getPlatformAiProvider } from '../modules/ai/provider';
+import { createAiReviewRequestJob } from '../modules/ai-review/jobs/ai-review-request.job';
+import { createAiReviewRoutes } from '../modules/ai-review/routing';
 
 const RELAY_INTERVAL_MS = 2_000;
 
@@ -37,6 +40,10 @@ export const outboxRelayPlugin = fp(async (app) => {
   const reconcileIssueJob = createReconcileIssueJob(app.db, app.log);
   const reconcilePrJob = createReconcilePrJob(app.db, app.log);
   const notifySlackJob = createNotifySlackJob(app.db, app.log, credentialsKey);
+  // AI is platform-configured: without a provider the review pipeline is simply not wired.
+  const ai = getPlatformAiProvider();
+  const aiReviewJob = ai ? createAiReviewRequestJob(app.db, app.log, credentialsKey, ai) : null;
+  if (!ai) app.log.warn('ANTHROPIC_API_KEY not set — AI review pipeline disabled');
 
   const routes: EventRoute[] = [
     createSystemPingRoute(systemPingJob),
@@ -45,6 +52,7 @@ export const outboxRelayPlugin = fp(async (app) => {
     ...createReconciliationRoutes(reconcileIssueJob),
     ...createPrReconciliationRoutes(reconcilePrJob),
     ...createNotificationRoutes(notifySlackJob),
+    ...(aiReviewJob ? createAiReviewRoutes(aiReviewJob) : []),
   ];
 
   const runInContext = <T>(correlationId: string, fn: () => T): T =>
@@ -57,6 +65,7 @@ export const outboxRelayPlugin = fp(async (app) => {
     reconcileIssueJob.createWorker(app.redis, { runInContext }),
     reconcilePrJob.createWorker(app.redis, { runInContext }),
     notifySlackJob.createWorker(app.redis, { runInContext }),
+    ...(aiReviewJob ? [aiReviewJob.createWorker(app.redis, { runInContext })] : []),
   ];
 
   const relayId = `api-${randomUUID()}`;

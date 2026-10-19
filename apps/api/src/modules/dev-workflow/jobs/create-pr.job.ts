@@ -110,6 +110,7 @@ export async function runCreatePrStep(
           repo: pr.repo,
           number: pr.number,
           url: pr.url,
+          headSha: pr.headSha,
         },
       }),
     );
