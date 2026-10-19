@@ -1,6 +1,6 @@
 # Wave 3 — Core Domain: architecture & design
 
-**Status:** Approved — frozen for implementation (two review passes; see §16)
+**Status:** Implemented (approved after two review passes; see §16)
 **Scope source:** [`phase-1.md`](../../../phase-1.md) §6 · [`project.md`](../../../project.md) §9, §10, §11
 **Modules covered:** Work Items (aggregate + state machine), Development Workflow (start-work → branch → PR orchestration through ports), PR/issue reconciliation (inbound webhook consumption), the Activity timeline projection, and a thin Slack notification consumer.
 
