@@ -46,6 +46,8 @@ export interface UpsertCheckRunInput {
   status: CheckRunStatus;
   conclusion?: CheckRunConclusion;
   detailsUrl?: string;
+  /** Rendered on the check's page in GitHub (Markdown summary). */
+  output?: { title: string; summary: string };
 }
 
 export interface SourceControlPort {

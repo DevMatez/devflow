@@ -9,6 +9,13 @@ const DEFAULT_SLACK_CALLBACK_URL = `${DEFAULT_HOMEPAGE_URL}/api/v1/integrations/
 const DEFAULT_GOOGLE_CALLBACK_URL = `${DEFAULT_HOMEPAGE_URL}/api/v1/integrations/calendar/callback`;
 const DEFAULT_CALENDAR_WEBHOOK_URL = `${DEFAULT_HOMEPAGE_URL}/api/v1/webhooks/calendar`;
 
+const AI_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+const DEFAULT_AI_MODEL = 'claude-opus-5-5';
+
+/** Treats an empty `KEY=` line in .env as unset rather than as an invalid empty string. */
+const optionalString = () =>
+  z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional());
+
 const envSchema = z.object({
   NODE_ENV: sharedEnv.nodeEnv(),
   HOST: sharedEnv.host(DEFAULT_HOST),
@@ -43,6 +50,14 @@ const envSchema = z.object({
   GOOGLE_OAUTH_CALLBACK_URL: sharedEnv.url().default(DEFAULT_GOOGLE_CALLBACK_URL),
   // Public HTTPS address Google calls with push notifications; passed to events.watch at connect time.
   GOOGLE_CALENDAR_WEBHOOK_URL: sharedEnv.url().default(DEFAULT_CALENDAR_WEBHOOK_URL),
+  // Wave 4 AI (platform-configured, not org-connected). Unset → AI review pipeline and
+  // ticket-draft endpoints are disabled; everything else runs normally.
+  ANTHROPIC_API_KEY: optionalString(),
+  // capability → model mapping (packages/ai README "Model selection").
+  AI_CODE_REVIEW_MODEL: z.string().min(1).default(DEFAULT_AI_MODEL),
+  AI_CODE_REVIEW_EFFORT: z.enum(AI_EFFORTS).default('high'),
+  AI_TICKET_DRAFT_MODEL: z.string().min(1).default(DEFAULT_AI_MODEL),
+  AI_TICKET_DRAFT_EFFORT: z.enum(AI_EFFORTS).default('low'),
 });
 
 export type Env = z.infer<typeof envSchema>;

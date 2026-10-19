@@ -14,6 +14,7 @@
     "clean": "rimraf dist .turbo"
   },
   "dependencies": {
+    "@devflow/ai": "workspace:*",
     "@devflow/config": "workspace:*",
     "@devflow/database": "workspace:*",
     "@devflow/events": "workspace:*",

@@ -215,6 +215,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@devflow/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@devflow/config':
         specifier: workspace:*
         version: link:../../packages/config

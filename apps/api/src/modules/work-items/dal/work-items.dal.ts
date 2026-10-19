@@ -223,7 +223,29 @@ export async function lockWorkItemForPrEvent(
   number: number,
   headBranch: string,
 ): Promise<WorkItemRow | undefined> {
-  const byPrRef = await tx
+  return selectWorkItemForPr(tx, organizationId, repo, number, headBranch, true);
+}
+
+/** Non-locking read of the same PR → work item match (by `pr_ref`, then head branch). */
+export function findWorkItemForPr(
+  db: Database | DatabaseTransaction,
+  organizationId: string,
+  repo: string,
+  number: number,
+  headBranch: string,
+): Promise<WorkItemRow | undefined> {
+  return selectWorkItemForPr(db, organizationId, repo, number, headBranch, false);
+}
+
+async function selectWorkItemForPr(
+  db: Database | DatabaseTransaction,
+  organizationId: string,
+  repo: string,
+  number: number,
+  headBranch: string,
+  lock: boolean,
+): Promise<WorkItemRow | undefined> {
+  const byPrRefQuery = db
     .select()
     .from(schema.workItems)
     .where(
@@ -233,11 +255,11 @@ export async function lockWorkItemForPrEvent(
         sql`${schema.workItems.prRef}->>'number' = ${String(number)}`,
       ),
     )
-    .for('update')
     .limit(1);
+  const byPrRef = await (lock ? byPrRefQuery.for('update') : byPrRefQuery);
   if (byPrRef[0]) return byPrRef[0];
 
-  const byBranch = await tx
+  const byBranchQuery = db
     .select()
     .from(schema.workItems)
     .where(
@@ -248,7 +270,7 @@ export async function lockWorkItemForPrEvent(
         sql`${schema.workItems.prRef} is null`,
       ),
     )
-    .for('update')
     .limit(1);
+  const byBranch = await (lock ? byBranchQuery.for('update') : byBranchQuery);
   return byBranch[0];
 }

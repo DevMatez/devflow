@@ -50,6 +50,13 @@
       "when": 1788713199210,
       "tag": "0006_careless_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792404956212,
+      "tag": "0007_lowly_ravenous",
+      "breakpoints": true
     }
   ]
 }

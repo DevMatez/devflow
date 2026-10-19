@@ -91,6 +91,42 @@ function toLine(event: ProjectionEvent): Line {
         metadata: { step: p.step, error: p.error },
       };
 
+    case 'ai.review_requested':
+      return {
+        workItemId,
+        actorType: 'system',
+        action: 'ai.review_requested',
+        summary: `AI review started for ${String(p.repo)}#${String(p.prNumber)} @ ${String(p.headSha).slice(0, 7)}`,
+        metadata: { repo: p.repo, prNumber: p.prNumber, headSha: p.headSha },
+      };
+
+    case 'ai.review_completed':
+      return {
+        workItemId,
+        actorType: 'system',
+        action: 'ai.review_completed',
+        summary:
+          p.policyConclusion === 'failure'
+            ? `AI review completed — critical findings block merge (${String(p.findingCount)} finding(s))`
+            : `AI review completed — ${String(p.findingCount)} finding(s), not blocking`,
+        metadata: {
+          repo: p.repo,
+          prNumber: p.prNumber,
+          headSha: p.headSha,
+          policyConclusion: p.policyConclusion,
+          findingCount: p.findingCount,
+        },
+      };
+
+    case 'ai.review_failed':
+      return {
+        workItemId,
+        actorType: 'system',
+        action: 'ai.review_failed',
+        summary: 'AI review could not complete (check set to neutral)',
+        metadata: { repo: p.repo, prNumber: p.prNumber, headSha: p.headSha, error: p.error },
+      };
+
     case 'workitem.reconciled':
       return {
         workItemId: (p.workItemId as string | null) ?? null,
@@ -135,4 +171,7 @@ export const ACTIVITY_EVENT_TYPES = [
   'devworkflow.pull_request_opened',
   'devworkflow.workflow_failed',
   'workitem.reconciled',
+  'ai.review_requested',
+  'ai.review_completed',
+  'ai.review_failed',
 ] as const;

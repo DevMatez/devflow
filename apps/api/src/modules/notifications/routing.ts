@@ -6,6 +6,8 @@ const NOTIFIED_EVENT_TYPES = [
   'devworkflow.work_started',
   'devworkflow.pull_request_opened',
   'workitem.state_changed',
+  'ai.review_completed',
+  'ai.review_failed',
 ] as const;
 
 /**
