@@ -19,7 +19,7 @@ export interface GithubPullRequest {
   state: string;
   merged?: boolean;
   html_url: string;
-  head: { ref: string };
+  head: { ref: string; sha: string };
   base: { ref: string };
   user: GithubUser;
   created_at: string;
@@ -61,6 +61,7 @@ export function toPullRequest(pr: GithubPullRequest, repoFullName: string): Pull
     state: pr.merged ? 'merged' : pr.state === 'closed' ? 'closed' : 'open',
     url: pr.html_url,
     headRef: pr.head.ref,
+    headSha: pr.head.sha,
     baseRef: pr.base.ref,
     authorExternalId: String(pr.user.id),
     createdAt: pr.created_at,

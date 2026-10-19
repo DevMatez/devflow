@@ -37,7 +37,7 @@ const prFixture = {
   title: 'PR',
   state: 'open',
   html_url: 'https://github.com/acme/widgets/pull/7',
-  head: { ref: 'feature/x' },
+  head: { ref: 'feature/x', sha: 'abc123' },
   base: { ref: 'main' },
   user: { id: 42 },
   created_at: '2026-01-01T00:00:00Z',

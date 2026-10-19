@@ -80,6 +80,7 @@ export function runSourceControlPortContractTests(
         state: expect.stringMatching(/^(open|closed|merged)$/),
         url: expect.any(String),
         headRef: expect.any(String),
+        headSha: expect.any(String),
         baseRef: expect.any(String),
         authorExternalId: expect.any(String),
         createdAt: expect.any(String),
