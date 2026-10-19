@@ -39,18 +39,19 @@ Waves are dependency-ordered. Within a wave, modules can largely be built in par
 
 ### Progress
 
-| Wave                 | Status      | Design doc                                                                   |
-| -------------------- | ----------- | ---------------------------------------------------------------------------- |
-| 0 Foundation         | Implemented | [`orchestration.md`](./apps/api/docs/orchestration.md)                       |
-| 1 Identity & Tenancy | Implemented | [`wave-1-identity-tenancy.md`](./apps/api/docs/wave-1-identity-tenancy.md)   |
-| 2 Integration Layer  | Implemented | [`wave-2-integration-layer.md`](./apps/api/docs/wave-2-integration-layer.md) |
-| 3 Core Domain        | Implemented | [`wave-3-core-domain.md`](./apps/api/docs/wave-3-core-domain.md)             |
-| 4 AI                 | Implemented | [`wave-4-ai.md`](./apps/api/docs/wave-4-ai.md)                               |
-| 5 Frontend           | Not started | —                                                                            |
+| Wave                 | Status       | Design doc                                                                   |
+| -------------------- | ------------ | ---------------------------------------------------------------------------- |
+| 0 Foundation         | Implemented  | [`orchestration.md`](./apps/api/docs/orchestration.md)                       |
+| 1 Identity & Tenancy | Implemented  | [`wave-1-identity-tenancy.md`](./apps/api/docs/wave-1-identity-tenancy.md)   |
+| 2 Integration Layer  | Implemented  | [`wave-2-integration-layer.md`](./apps/api/docs/wave-2-integration-layer.md) |
+| 3 Core Domain        | Implemented  | [`wave-3-core-domain.md`](./apps/api/docs/wave-3-core-domain.md)             |
+| 4 AI                 | Implemented  | [`wave-4-ai.md`](./apps/api/docs/wave-4-ai.md)                               |
+| 5 Frontend           | Design draft | [`wave-5-frontend.md`](./apps/web/docs/wave-5-frontend.md)                   |
 
-Waves 0–4 are API-complete and covered by unit/integration tests. The end-to-end flow
-has not yet been exercised against live providers, and nothing in Phase 1 is
-user-facing until Wave 5.
+Waves 0–4 are API-complete and covered by unit/integration tests. The Wave 1
+projects endpoints (designed in its §5/§7) were missed and landed later, as the
+first Wave 5 prerequisite. The end-to-end flow has not yet been exercised against
+live providers, and nothing in Phase 1 is user-facing until Wave 5.
 
 ---
 

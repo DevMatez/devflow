@@ -6,6 +6,7 @@ import { organizationsRouter } from './organizations/router';
 import { invitationsRouter } from './invitations/router';
 import { integrationsRouter } from './integrations/router';
 import { webhooksRouter } from './webhooks/router';
+import { projectsRouter } from './projects/router';
 import { workItemsRouter } from './work-items/router';
 import { activityRouter } from './activity/router';
 import { aiRouter } from './ai/router';
@@ -22,6 +23,7 @@ export async function v1Routes(app: FastifyInstance): Promise<void> {
   await app.register(invitationsRouter);
   await app.register(integrationsRouter);
   await app.register(webhooksRouter);
+  await app.register(projectsRouter);
   await app.register(workItemsRouter);
   await app.register(activityRouter);
   await app.register(aiRouter);

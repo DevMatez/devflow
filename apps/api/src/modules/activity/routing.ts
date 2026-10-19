@@ -54,4 +54,7 @@ export const IGNORED_EVENT_TYPES: readonly string[] = [
   'member.removed',
   'member.invited',
   'member.joined',
+  // project lifecycle — no Phase 1 consumer
+  'project.created',
+  'project.workflow_config_updated',
 ];
